@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --color-kid-primary: #3b82f6;
+  --color-kid-orange: #f97316;
+  --color-kid-bg: #f8fafc;
+  --color-kid-text: #334155;
+  --color-kid-light-card: #ffffff;
+  --color-kid-green: #22c55e;
+  --color-kid-red: #ef4444;
+
+  --color-kidPrimary: #3b82f6;
+  --color-kidOrange: #f97316;
+  --color-kidBg: #f8fafc;
+  --color-kidText: #334155;
+  --color-kidLightCard: #ffffff;
+  --color-kidGreen: #22c55e;
+  --color-kidRed: #ef4444;
+
+  --shadow-soft: 0 4px 14px 0 rgba(0, 0, 0, 0.05);
+  --shadow-btn: 0 4px 0 0 rgba(0, 0, 0, 0.1);
+  --font-sans: "Nunito", "Inter", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-kidBg text-kidText font-sans selection:bg-kidOrange selection:text-white overscroll-none;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+
+@layer utilities {
+  .clip-path-rounded {
+    clip-path: circle(50% at 50% 50%);
+  }
+
+  .kid-btn {
+    @apply bg-kidOrange text-white font-bold py-3 px-6 rounded-full hover:bg-orange-600 transition transform active:scale-95 shadow-btn text-lg w-full flex justify-center items-center gap-2;
+  }
+
+  .kid-btn-secondary {
+    @apply bg-kidBg text-kidText font-bold py-3 px-6 rounded-full hover:bg-slate-200 transition transform active:scale-95 shadow-btn border border-slate-200 text-lg w-full flex justify-center items-center gap-2;
+  }
+
+  /* Custom scrollbar to avoid bulky look on desktop */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full;
+  }
+}

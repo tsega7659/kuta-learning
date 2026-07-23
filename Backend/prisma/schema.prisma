@@ -1,0 +1,194 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  CONTENT_MANAGER
+}
+
+enum ContentType {
+  TEXT
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum QuestionType {
+  SINGLE_CHOICE
+  COLOR_MATCH
+  WORD_ORDER
+  MULTIPLE_CHOICE
+  MATCHING
+  TRUE_FALSE
+  FILL_IN_BLANK
+  DRAG_AND_DROP
+  
+}
+
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  passwordHash   String
+  role           Role            @default(STUDENT)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  studentProfile StudentProfile?
+  lessonProgress LessonProgress[]
+  quizAttempts   QuizAttempt[]
+}
+
+model StudentProfile {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  gradeLevel Int      // 1 to 4
+  avatarUrl  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Course {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  coverImage  String?
+  gradeLevel  Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  chapters    Chapter[]
+}
+
+model Chapter {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  topics    Topic[]
+  
+  @@unique([courseId, order])
+}
+
+model Topic {
+  id        String   @id @default(uuid())
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lessons   Lesson[]
+  quiz      Quiz?
+
+  @@unique([chapterId, order])
+}
+
+model Lesson {
+  id          String          @id @default(uuid())
+  topicId     String
+  topic       Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  contents    LessonContent[]
+  progress    LessonProgress[]
+
+  @@unique([topicId, order])
+}
+
+model LessonContent {
+  id        String      @id @default(uuid())
+  lessonId  String
+  lesson    Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  type      ContentType
+  content   String      // Text markdown, S3 URL, YouTube embed, etc.
+  order     Int
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Quiz {
+  id           String        @id @default(uuid())
+  topicId      String        @unique
+  topic        Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title        String
+  passingScore Int           // As a percentage
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  questions    Question[]
+  attempts     QuizAttempt[]
+}
+
+model Question {
+  id          String           @id @default(uuid())
+  quizId      String
+  quiz        Quiz             @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  type        QuestionType     @default(SINGLE_CHOICE)
+  text        String
+  resourceUrl String?          // For image-based questions
+  order       Int
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  options     QuestionOption[]
+  answers     QuizAnswer[]
+}
+
+model QuestionOption {
+  id          String       @id @default(uuid())
+  questionId  String
+  question    Question     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text        String
+  isCorrect   Boolean      @default(false)
+  imageUrl    String?      // Used for Color Match / image choice quizzes
+  order       Int
+  answers     QuizAnswer[]
+}
+
+model LessonProgress {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed   Boolean  @default(false)
+  completedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, lessonId])
+}
+
+model QuizAttempt {
+  id        String       @id @default(uuid())
+  studentId String
+  student   User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  quizId    String
+  quiz      Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score     Int
+  maxScore  Int
+  passed    Boolean
+  createdAt DateTime     @default(now())
+  answers   QuizAnswer[]
+}
+
+model QuizAnswer {
+  id               String          @id @default(uuid())
+  attemptId        String
+  attempt          QuizAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOptionId String?
+  selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
+  textResponse     String?         // Stores letter sequencing for Word Order questions
+  isCorrect        Boolean
+}
