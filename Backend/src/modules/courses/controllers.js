@@ -17,7 +17,21 @@ export const getCourseById = async (req, res) => {
     try {
         const course = await prisma.course.findUnique({
             where: { id },
-            include: { chapters: { orderBy: { order: "asc" } } },
+            include: {
+                chapters: {
+                    orderBy: { order: "asc" },
+                    include: {
+                        topics: {
+                            orderBy: { order: "asc" },
+                            include: {
+                                lessons: {
+                                    orderBy: { order: "asc" }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         });
         if (!course) return res.status(404).json({ message: "Course not found" });
         res.json(course);

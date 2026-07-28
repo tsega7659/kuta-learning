@@ -16,10 +16,24 @@ export const getChapters = async (req, res) => {
 
 // POST /api/courses/:courseId/chapters
 export const createChapter = async (req, res) => {
-    const { title, order } = req.body;
+    let { title, order } = req.body;
     try {
+        const courseId = req.params.courseId;
+
+        let finalOrder = parseInt(order);
+        if (isNaN(finalOrder) || finalOrder <= 0) {
+            const last = await prisma.chapter.findFirst({ where: { courseId }, orderBy: { order: "desc" } });
+            finalOrder = last ? last.order + 1 : 1;
+        } else {
+            const existing = await prisma.chapter.findUnique({ where: { courseId_order: { courseId, order: finalOrder } } });
+            if (existing) {
+                const last = await prisma.chapter.findFirst({ where: { courseId }, orderBy: { order: "desc" } });
+                finalOrder = last ? last.order + 1 : 1;
+            }
+        }
+
         const chapter = await prisma.chapter.create({
-            data: { title, order: parseInt(order), courseId: req.params.courseId },
+            data: { title, order: finalOrder, courseId },
         });
         res.status(201).json(chapter);
     } catch (err) {

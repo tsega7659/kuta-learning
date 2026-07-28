@@ -13,10 +13,24 @@ export const getLessonContents = async (req, res) => {
 };
 
 export const addLessonContent = async (req, res) => {
-    const { type, content, order } = req.body;
+    let { type, content, order } = req.body;
     try {
+        const lessonId = req.params.lessonId;
+
+        let finalOrder = parseInt(order);
+        if (isNaN(finalOrder) || finalOrder <= 0) {
+            const last = await prisma.lessonContent.findFirst({ where: { lessonId }, orderBy: { order: "desc" } });
+            finalOrder = last ? last.order + 1 : 1;
+        } else {
+            const existing = await prisma.lessonContent.findUnique({ where: { lessonId_order: { lessonId, order: finalOrder } } });
+            if (existing) {
+                const last = await prisma.lessonContent.findFirst({ where: { lessonId }, orderBy: { order: "desc" } });
+                finalOrder = last ? last.order + 1 : 1;
+            }
+        }
+
         const lessonContent = await prisma.lessonContent.create({
-            data: { type, content, order: parseInt(order), lessonId: req.params.lessonId },
+            data: { type, content, order: finalOrder, lessonId },
         });
         res.status(201).json(lessonContent);
     } catch (err) {

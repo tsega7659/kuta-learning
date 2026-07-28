@@ -3,7 +3,7 @@ import { getLessonContents, addLessonContent, updateLessonContent, deleteLessonC
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 
-const router = Router({ mergeParams: true }); // Extends from lessonId
+const router = Router({ mergeParams: true });
 
 router.get("/", authenticateToken, getLessonContents);
 router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), addLessonContent);

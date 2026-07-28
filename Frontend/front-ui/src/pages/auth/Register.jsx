@@ -3,43 +3,52 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-export default function Login() {
+export default function Register() {
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [gradeLevel, setGradeLevel] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!gradeLevel) {
+            setError('Please select your grade level.');
+            return;
+        }
         setError('');
         setLoading(true);
         try {
-            const user = await login(email, password);
-            if (user.role === 'STUDENT') {
-                navigate('/student/home');
-            } else {
-                navigate('/admin/dashboard');
-            }
+            await register(email, password, name, gradeLevel);
+            navigate('/student/home');
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
+            setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Registration failed.');
         } finally {
             setLoading(false);
         }
     };
 
+    const grades = [
+        { level: 1, emoji: '🌱', label: 'Grade 1' },
+        { level: 2, emoji: '🌿', label: 'Grade 2' },
+        { level: 3, emoji: '🌳', label: 'Grade 3' },
+        { level: 4, emoji: '🌲', label: 'Grade 4' },
+    ];
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50 flex items-center justify-center p-4">
             <div className="w-full max-w-sm">
                 {/* Logo */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-6">
                     <div className="w-20 h-20 bg-kidOrange rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <span className="text-4xl">📚</span>
+                        <span className="text-4xl">🎒</span>
                     </div>
-                    <h1 className="text-3xl font-black text-kidText">Kuta Learning</h1>
-                    <p className="text-gray-400 font-bold text-sm mt-1">Welcome back!</p>
+                    <h1 className="text-3xl font-black text-kidText">Join the Fun!</h1>
+                    <p className="text-gray-400 font-bold text-sm mt-1">Create your learning account</p>
                 </div>
 
                 {/* Form Card */}
@@ -50,6 +59,18 @@ export default function Login() {
                                 {error}
                             </div>
                         )}
+
+                        <div>
+                            <label className="block text-sm font-bold text-kidText mb-1.5">Your Name</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-kidOrange focus:outline-none transition text-kidText font-medium"
+                                placeholder="What's your name?"
+                                required
+                            />
+                        </div>
 
                         <div>
                             <label className="block text-sm font-bold text-kidText mb-1.5">Email</label>
@@ -71,8 +92,9 @@ export default function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-kidOrange focus:outline-none transition text-kidText font-medium pr-12"
-                                    placeholder="••••••"
+                                    placeholder="At least 6 characters"
                                     required
+                                    minLength={6}
                                 />
                                 <button
                                     type="button"
@@ -84,20 +106,41 @@ export default function Login() {
                             </div>
                         </div>
 
+                        {/* Grade Selection */}
+                        <div>
+                            <label className="block text-sm font-bold text-kidText mb-2">Pick Your Grade</label>
+                            <div className="grid grid-cols-4 gap-2">
+                                {grades.map((g) => (
+                                    <button
+                                        key={g.level}
+                                        type="button"
+                                        onClick={() => setGradeLevel(g.level)}
+                                        className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${gradeLevel === g.level
+                                                ? 'border-kidOrange bg-orange-50 scale-105'
+                                                : 'border-gray-100 hover:border-gray-200'
+                                            }`}
+                                    >
+                                        <span className="text-2xl mb-1">{g.emoji}</span>
+                                        <span className="text-[10px] font-bold text-kidText">{g.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
                             className="w-full bg-kidOrange text-white font-bold py-3.5 rounded-2xl hover:bg-orange-600 transition transform active:scale-95 shadow-btn text-lg disabled:opacity-50"
                         >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                            {loading ? 'Creating account...' : 'Start Learning! 🚀'}
                         </button>
                     </form>
 
                     <div className="mt-6 text-center">
                         <p className="text-sm text-gray-400 font-medium">
-                            Don't have an account?{' '}
-                            <Link to="/register" className="text-kidOrange font-bold hover:underline">
-                                Sign Up
+                            Already have an account?{' '}
+                            <Link to="/login" className="text-kidOrange font-bold hover:underline">
+                                Sign In
                             </Link>
                         </p>
                     </div>

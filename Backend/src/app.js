@@ -10,7 +10,7 @@ const app = express();
 // CORS – allow the Vite dev server (default 5173) to call the API
 app.use(
     cors({
-        origin: "http://localhost:5174",
+        origin: ["http://localhost:5173", "http://localhost:5174"],
         credentials: true,
     })
 );
