@@ -26,11 +26,20 @@ import authRoutes from "./modules/auth/routes.js";
 import courseRoutes from "./modules/courses/routes.js";
 import progressRoutes from "./modules/progress/routes.js";
 import studentRoutes from "./modules/students/routes.js";
+import flatLessonRoutes from "./modules/lessons/flatRoutes.js";
+import uploadRoutes from "./modules/upload/routes.js";
+import quizFlatRoutes from "./modules/quizzes/flatRoutes.js";
+
+// Serve the uploads folder publicly so the frontend can display the files
+app.use("/uploads", express.static("uploads"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/students", studentRoutes);
+app.use("/api/lessons", flatLessonRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/quizzes", quizFlatRoutes);
 // ---------------------------------------------------------------------
 
 export default app;

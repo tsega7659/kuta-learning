@@ -16,7 +16,7 @@ export const getChapters = async (req, res) => {
 
 // POST /api/courses/:courseId/chapters
 export const createChapter = async (req, res) => {
-    let { title, order } = req.body;
+    let { title, description, coverImage, order } = req.body;
     try {
         const courseId = req.params.courseId;
 
@@ -33,7 +33,7 @@ export const createChapter = async (req, res) => {
         }
 
         const chapter = await prisma.chapter.create({
-            data: { title, order: finalOrder, courseId },
+            data: { title, description, coverImage, order: finalOrder, courseId },
         });
         res.status(201).json(chapter);
     } catch (err) {
@@ -43,11 +43,11 @@ export const createChapter = async (req, res) => {
 
 // PUT /api/courses/:courseId/chapters/:id (we can just use /api/chapters/:id directly in the future, but it works here)
 export const updateChapter = async (req, res) => {
-    const { title, order } = req.body;
+    const { title, description, coverImage, order } = req.body;
     try {
         const chapter = await prisma.chapter.update({
             where: { id: req.params.id },
-            data: { title, order: parseInt(order) },
+            data: { title, description, coverImage, order: parseInt(order) },
         });
         res.json(chapter);
     } catch (err) {

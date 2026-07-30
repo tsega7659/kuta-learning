@@ -5,6 +5,7 @@ import StudentLayout from './components/layout/StudentLayout';
 import AdminLayout from './components/layout/AdminLayout';
 
 // Auth Pages
+import Welcome from './pages/auth/Welcome';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 
@@ -29,14 +30,14 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
           {/* Student Routes (Protected) */}
           <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
             <Route path="/student" element={<StudentLayout />}>
-              <Route path="home" element={<HomeProfile />} />
+              <Route path="home" element={<CourseList />} />
               <Route path="courses" element={<CourseList />} />
               <Route path="courses/:id" element={<CourseDetail />} />
               <Route path="lessons/:id" element={<LessonView />} />

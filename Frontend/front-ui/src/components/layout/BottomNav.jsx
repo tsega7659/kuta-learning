@@ -25,10 +25,13 @@ export default function BottomNav() {
                     >
                         {({ isActive }) => (
                             <>
-                                <div className={`p-1 rounded-full ${isActive ? 'bg-orange-50' : ''}`}>
-                                    {isActive ? <item.Solid className="w-6 h-6" /> : <item.Outline className="w-6 h-6" />}
+                                <div className={`relative px-4 py-1.5 rounded-full flex flex-col items-center justify-center transition-all ${isActive ? 'text-white' : ''}`}>
+                                    {isActive && <div className="absolute inset-0 bg-[#f88125] rounded-[18px]"></div>}
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        {isActive ? <item.Outline className="w-[22px] h-[22px] mb-1" /> : <item.Outline className="w-[22px] h-[22px] mb-1 text-gray-500" />}
+                                        <span className={`text-[10px] font-bold tracking-wide ${isActive ? 'text-white' : 'text-gray-500'}`}>{item.name}</span>
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-bold mt-1 tracking-wide">{item.name}</span>
                             </>
                         )}
                     </NavLink>

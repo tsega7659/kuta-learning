@@ -8,12 +8,13 @@ export const getLessonContents = async (req, res) => {
         });
         res.json(contents);
     } catch (err) {
+        console.error("GET LESSON CONTENTS ERROR:", err);
         res.status(500).json({ message: "Server error" });
     }
 };
 
 export const addLessonContent = async (req, res) => {
-    let { type, content, order } = req.body;
+    let { type, content, description, order } = req.body;
     try {
         const lessonId = req.params.lessonId;
 
@@ -22,7 +23,7 @@ export const addLessonContent = async (req, res) => {
             const last = await prisma.lessonContent.findFirst({ where: { lessonId }, orderBy: { order: "desc" } });
             finalOrder = last ? last.order + 1 : 1;
         } else {
-            const existing = await prisma.lessonContent.findUnique({ where: { lessonId_order: { lessonId, order: finalOrder } } });
+            const existing = await prisma.lessonContent.findFirst({ where: { lessonId, order: finalOrder } });
             if (existing) {
                 const last = await prisma.lessonContent.findFirst({ where: { lessonId }, orderBy: { order: "desc" } });
                 finalOrder = last ? last.order + 1 : 1;
@@ -30,20 +31,21 @@ export const addLessonContent = async (req, res) => {
         }
 
         const lessonContent = await prisma.lessonContent.create({
-            data: { type, content, order: finalOrder, lessonId },
+            data: { type, content, description, order: finalOrder, lessonId },
         });
         res.status(201).json(lessonContent);
     } catch (err) {
-        res.status(500).json({ message: "Server error" });
+        console.error("DEBUG ADD LESSON CONTENT ERROR:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
     }
 };
 
 export const updateLessonContent = async (req, res) => {
-    const { type, content, order } = req.body;
+    const { type, content, description, order } = req.body;
     try {
         const lessonContent = await prisma.lessonContent.update({
             where: { id: req.params.id },
-            data: { type, content, order: parseInt(order) },
+            data: { type, content, description, order: parseInt(order) },
         });
         res.json(lessonContent);
     } catch (err) {

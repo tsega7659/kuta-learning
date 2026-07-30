@@ -14,47 +14,37 @@ export const getTopics = async (req, res) => {
 };
 
 export const createTopic = async (req, res) => {
-    let { title, order } = req.body;
+    let { title, description, coverImage, order } = req.body;
     try {
         const chapterId = req.params.chapterId;
 
         let finalOrder = parseInt(order);
         if (isNaN(finalOrder) || finalOrder <= 0) {
-            const lastTopic = await prisma.topic.findFirst({
-                where: { chapterId },
-                orderBy: { order: "desc" },
-            });
+            const lastTopic = await prisma.topic.findFirst({ where: { chapterId }, orderBy: { order: "desc" } });
             finalOrder = lastTopic ? lastTopic.order + 1 : 1;
         } else {
-            // Ensure no collision if they submitted a duplicate
-            const existing = await prisma.topic.findUnique({
-                where: { chapterId_order: { chapterId, order: finalOrder } }
-            });
+            const existing = await prisma.topic.findUnique({ where: { chapterId_order: { chapterId, order: finalOrder } } });
             if (existing) {
-                const lastTopic = await prisma.topic.findFirst({
-                    where: { chapterId },
-                    orderBy: { order: "desc" },
-                });
+                const lastTopic = await prisma.topic.findFirst({ where: { chapterId }, orderBy: { order: "desc" } });
                 finalOrder = lastTopic ? lastTopic.order + 1 : 1;
             }
         }
 
         const topic = await prisma.topic.create({
-            data: { title, order: finalOrder, chapterId },
+            data: { title, description, coverImage, order: finalOrder, chapterId },
         });
         res.status(201).json(topic);
     } catch (err) {
-        console.error("DEBUG CREATE TOPIC ERROR:", err);
         res.status(500).json({ message: "Server error", detail: err.message });
     }
 };
 
 export const updateTopic = async (req, res) => {
-    const { title, order } = req.body;
+    const { title, description, coverImage, order } = req.body;
     try {
         const topic = await prisma.topic.update({
             where: { id: req.params.id },
-            data: { title, order: parseInt(order) },
+            data: { title, description, coverImage, order: parseInt(order) },
         });
         res.json(topic);
     } catch (err) {

@@ -14,7 +14,7 @@ export const getLessons = async (req, res) => {
 };
 
 export const createLesson = async (req, res) => {
-    let { title, description, order } = req.body;
+    let { title, description, coverImage, order } = req.body;
     try {
         const topicId = req.params.topicId;
 
@@ -31,7 +31,7 @@ export const createLesson = async (req, res) => {
         }
 
         const lesson = await prisma.lesson.create({
-            data: { title, description, order: finalOrder, topicId },
+            data: { title, description, coverImage, order: finalOrder, topicId },
         });
         res.status(201).json(lesson);
     } catch (err) {
@@ -40,11 +40,11 @@ export const createLesson = async (req, res) => {
 };
 
 export const updateLesson = async (req, res) => {
-    const { title, description, order } = req.body;
+    const { title, description, coverImage, order } = req.body;
     try {
         const lesson = await prisma.lesson.update({
             where: { id: req.params.id },
-            data: { title, description, order: parseInt(order) },
+            data: { title, description, coverImage, order: parseInt(order) },
         });
         res.json(lesson);
     } catch (err) {

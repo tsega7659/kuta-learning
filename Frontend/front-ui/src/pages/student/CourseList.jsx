@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { StarIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -25,59 +24,69 @@ export default function CourseList() {
         );
     }
 
-    const colors = [
-        { text: 'text-blue-500', bg: 'bg-blue-50', bar: 'bg-blue-500' },
-        { text: 'text-orange-500', bg: 'bg-orange-50', bar: 'bg-orange-500' },
-        { text: 'text-green-500', bg: 'bg-green-50', bar: 'bg-green-500' },
-        { text: 'text-purple-500', bg: 'bg-purple-50', bar: 'bg-purple-500' },
-        { text: 'text-pink-500', bg: 'bg-pink-50', bar: 'bg-pink-500' },
+    // Dynamic style mappers for Figma look
+    const styling = [
+        { iconBg: 'bg-blue-100', iconColor: 'text-blue-500', barBg: 'bg-blue-500', barBorder: 'border-blue-600', icon: '📝' },
+        { iconBg: 'bg-orange-100', iconColor: 'text-orange-500', barBg: 'bg-orange-500', barBorder: 'border-orange-600', icon: '🔢' },
+        { iconBg: 'bg-blue-200', iconColor: 'text-blue-600', barBg: 'bg-blue-400', barBorder: 'border-blue-500', icon: '🌿' },
+        { iconBg: 'bg-[#e2d5c3]', iconColor: 'text-[#925529]', barBg: 'bg-[#eaa678]', barBorder: 'border-[#c17849]', icon: '🎨' },
     ];
 
-    const emojis = ['📖', '🔢', '🌿', '🎨', '🎵', '🏰', '🚀', '🌟'];
-
     return (
-        <div className="p-4 pt-10">
-            {/* HEADER */}
+        <div className="bg-gradient-to-br from-blue-50 via-white to-orange-50 min-h-screen px-6 py-8 pb-32 font-sans">
+            <h1 className="text-[#a54c15] font-extrabold text-[15px] mb-6">Kuta Learning</h1>
+
+            {/* Section 1: Your Adventures */}
             <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h2 className="text-kidOrange font-bold text-sm tracking-wide">Kuta Learning</h2>
-                    <h1 className="text-3xl font-black text-kidText mt-1">Your Adventures</h1>
-                </div>
-                <div className="bg-white px-3 py-1.5 rounded-full border border-gray-100 flex items-center gap-1 shadow-sm">
-                    <StarIcon className="w-5 h-5 text-yellow-400" />
-                    <span className="font-bold text-kidText">12</span>
-                </div>
+                <h2 className="text-2xl font-black text-gray-800">Your Adventures</h2>
+                <button className="text-[#a54c15] text-[12px] font-bold flex items-center hover:opacity-80">
+                    View All <span className="ml-[2px] leading-none text-[15px]">→</span>
+                </button>
             </div>
 
-            {/* COURSE LIST */}
-            {courses.length === 0 ? (
-                <div className="text-center py-16">
-                    <span className="text-5xl block mb-4">📚</span>
-                    <h3 className="font-bold text-kidText text-lg mb-2">No courses yet!</h3>
-                    <p className="text-gray-400 font-medium">Ask your teacher to add some fun courses.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-5">
-                    {courses.map((course, idx) => {
-                        const color = colors[idx % colors.length];
-                        const emoji = emojis[idx % emojis.length];
+            <div className="space-y-5 mb-8">
+                {courses.length === 0 ? (
+                    <div className="bg-white rounded-[32px] p-6 shadow-sm text-center border border-gray-100">
+                        <span className="text-4xl block mb-2">📚</span>
+                        <p className="font-bold text-gray-500">Ask your teacher to add courses!</p>
+                    </div>
+                ) : (
+                    courses.map((course, idx) => {
+                        const style = styling[idx % styling.length];
+
                         return (
                             <div
                                 key={course.id}
                                 onClick={() => navigate(`/student/courses/${course.id}`)}
-                                className="bg-white rounded-3xl p-5 shadow-soft border border-gray-50 flex flex-col items-center cursor-pointer transition active:scale-95"
+                                className="bg-white rounded-[32px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-50 cursor-pointer transition-transform active:scale-[0.98] flex flex-col items-center"
                             >
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl font-black mb-3 ${color.bg} ${color.text}`}>
-                                    {emoji}
+                                <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center text-[32px] mb-4 ${style.iconBg} shadow-sm border border-white`}>
+                                    {course.coverImage ? (
+                                        <img src={course.coverImage} className="w-full h-full rounded-full object-cover" alt="" />
+                                    ) : (
+                                        <span>{style.icon}</span>
+                                    )}
                                 </div>
-                                <h3 className="font-extrabold text-lg text-kidText mb-1">{course.title}</h3>
-                                <p className="text-xs text-gray-400 font-medium mb-3 text-center">{course.description}</p>
-                                <span className="text-[10px] font-bold bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">Grade {course.gradeLevel}</span>
+                                <h3 className="font-extrabold text-[18px] text-gray-800 mb-6">{course.title}</h3>
+
+                                <div className="w-full text-left">
+                                    <div className="flex justify-between items-center text-[12px] font-bold mb-2 px-1">
+                                        <span className="text-gray-500 uppercase tracking-widest">Progress</span>
+                                        <span className="text-gray-500">0%</span>
+                                    </div>
+                                    <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden shadow-inner flex items-center">
+                                        <div
+                                            className={`h-full ${style.barBg} border-b-[3px] ${style.barBorder} rounded-full min-w-[5%]`}
+                                            style={{ width: `0%` }}
+                                        ></div>
+                                    </div>
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
-            )}
+                        )
+                    })
+                )}
+            </div>
+
         </div>
     );
 }
