@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, CheckCircleIcon, SpeakerWaveIcon, PlayCircleIcon } from '@heroicons/react/24/solid';
 import api from '../../services/api';
@@ -11,6 +11,9 @@ export default function LessonView() {
     const [loading, setLoading] = useState(true);
     const [completing, setCompleting] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const [locked, setLocked] = useState(false);
+    const audioRef = useRef(null);
+    const [audioState, setAudioState] = useState({ url: '', status: 'idle' });
 
     useEffect(() => {
         const fetchLesson = async () => {
@@ -18,6 +21,8 @@ export default function LessonView() {
                 const res = await api.get(`/lessons/${id}`);
                 setLesson(res.data);
                 setContents(res.data.contents || []);
+                setCompleted(!!res.data.completed);
+                setLocked(!!res.data.locked);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -28,15 +33,60 @@ export default function LessonView() {
     }, [id]);
 
     const handleComplete = async () => {
+        if (locked) {
+            alert('Complete the previous lesson before opening this lesson.');
+            return;
+        }
+
         setCompleting(true);
         try {
             await api.post(`/progress/lessons/${id}/complete`);
             setCompleted(true);
+            setLocked(false);
         } catch (err) {
             console.error(err);
+            alert(err.response?.data?.message || 'Unable to mark the lesson complete.');
         } finally {
             setCompleting(false);
         }
+    };
+
+    const stopAudio = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        setAudioState({ url: '', status: 'idle' });
+    };
+
+    const handleAudioToggle = (url) => {
+        if (!audioRef.current) {
+            const audio = new Audio(url);
+            audio.onplay = () => setAudioState({ url, status: 'playing' });
+            audio.onpause = () => setAudioState({ url, status: 'paused' });
+            audio.onended = () => setAudioState({ url, status: 'ended' });
+            audioRef.current = audio;
+            audio.play();
+            return;
+        }
+
+        if (audioRef.current.src === url) {
+            if (audioRef.current.paused) {
+                audioRef.current.play();
+                setAudioState({ url, status: 'playing' });
+            } else {
+                audioRef.current.pause();
+                setAudioState({ url, status: 'paused' });
+            }
+            return;
+        }
+
+        audioRef.current.pause();
+        audioRef.current = new Audio(url);
+        audioRef.current.onplay = () => setAudioState({ url, status: 'playing' });
+        audioRef.current.onpause = () => setAudioState({ url, status: 'paused' });
+        audioRef.current.onended = () => setAudioState({ url, status: 'ended' });
+        audioRef.current.play();
     };
 
     if (loading) {
@@ -124,13 +174,40 @@ export default function LessonView() {
                     if (item.type === 'AUDIO') return (
                         <div key={item.id} className="bg-white rounded-[28px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-blue-50 text-center">
                             <h3 className="font-extrabold text-gray-900 text-[17px] mb-4">{item.description || 'Listen'}</h3>
-                            <button
-                                onClick={() => new Audio(item.content).play()}
-                                className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-blue-300/40"
-                            >
-                                <SpeakerWaveIcon className="w-10 h-10 text-white" />
-                            </button>
-                            <p className="text-gray-500 font-medium text-[13px] mt-3">Tap to play</p>
+                            <div className="flex items-center justify-center gap-3 mb-3">
+                                <button
+                                    onClick={() => handleAudioToggle(item.content)}
+                                    className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-blue-300/40"
+                                >
+                                    <SpeakerWaveIcon className="w-8 h-8 text-white" />
+                                </button>
+                                <button
+                                    onClick={() => handleAudioToggle(item.content)}
+                                    className="px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-bold text-xs"
+                                >
+                                    {audioState.url === item.content && audioState.status === 'playing' ? 'Pause' : 'Play'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (audioRef.current && audioRef.current.src === item.content && audioRef.current.paused) {
+                                            audioRef.current.play();
+                                            setAudioState({ url: item.content, status: 'playing' });
+                                        }
+                                    }}
+                                    className="px-4 py-2 rounded-full bg-orange-50 text-orange-600 font-bold text-xs"
+                                >
+                                    Resume
+                                </button>
+                                <button
+                                    onClick={stopAudio}
+                                    className="px-4 py-2 rounded-full bg-gray-100 text-gray-600 font-bold text-xs"
+                                >
+                                    Stop
+                                </button>
+                            </div>
+                            <p className="text-gray-500 font-medium text-[13px] mt-3">
+                                {audioState.url === item.content && audioState.status === 'playing' ? 'Playing now' : 'Tap to play'}
+                            </p>
                         </div>
                     );
 
@@ -159,7 +236,11 @@ export default function LessonView() {
 
             {/* Action buttons */}
             <div className="px-5 space-y-3">
-                {completed ? (
+                {locked ? (
+                    <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-600 font-bold py-4 rounded-full border-2 border-amber-100">
+                        <span>Complete the previous lesson first.</span>
+                    </div>
+                ) : completed ? (
                     <div className="flex items-center justify-center gap-2 bg-green-50 text-green-600 font-bold py-4 rounded-full border-2 border-green-100">
                         <CheckCircleIcon className="w-6 h-6" />
                         <span>Lesson Completed! 🎉</span>
@@ -175,8 +256,9 @@ export default function LessonView() {
                 )}
 
                 <button
-                    onClick={() => navigate('/student/quiz/color')}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-full hover:from-blue-600 hover:to-blue-700 transition active:scale-95 shadow-lg shadow-blue-400/30 text-[16px] flex items-center justify-center gap-2"
+                    onClick={() => navigate(`/student/quiz/${(lesson.topic?.quizzes || lesson.topic?.quiz || [])[0]?.id}`)}
+                    disabled={!(lesson.topic?.quizzes || lesson.topic?.quiz || []).length}
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-full hover:from-blue-600 hover:to-blue-700 transition active:scale-95 shadow-lg shadow-blue-400/30 text-[16px] flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                     <span>Take Quiz</span>
                     <span className="text-xl">✨</span>

@@ -54,6 +54,42 @@ export const logLessonCompletion = async (req, res) => {
     const studentId = req.user.id;
 
     try {
+        const lesson = await prisma.lesson.findUnique({
+            where: { id: lessonId },
+            select: { topicId: true, order: true }
+        });
+
+        if (!lesson) {
+            return res.status(404).json({ message: "Lesson not found" });
+        }
+
+        const orderedLessons = await prisma.lesson.findMany({
+            where: { topicId: lesson.topicId },
+            orderBy: { order: "asc" },
+            select: { id: true, order: true }
+        });
+
+        const currentIndex = orderedLessons.findIndex(l => l.id === lessonId);
+        const previousLesson = orderedLessons[currentIndex - 1];
+
+        if (previousLesson) {
+            const previousProgress = await prisma.lessonProgress.findUnique({
+                where: {
+                    studentId_lessonId: {
+                        studentId,
+                        lessonId: previousLesson.id
+                    }
+                },
+                select: { completed: true }
+            });
+
+            if (!previousProgress?.completed) {
+                return res.status(400).json({
+                    message: "Complete the previous lesson before unlocking this lesson."
+                });
+            }
+        }
+
         const progress = await prisma.lessonProgress.upsert({
             where: {
                 studentId_lessonId: { studentId, lessonId }
@@ -68,6 +104,7 @@ export const logLessonCompletion = async (req, res) => {
                 completed: true
             }
         });
+
         res.json(progress);
     } catch (err) {
         console.error(err);

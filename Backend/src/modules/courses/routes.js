@@ -8,13 +8,14 @@ import {
 } from "./controllers.js";
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
+import { optionalAuth } from "../../middlewares/optionalAuth.js";
 import chapterRoutes from "../chapters/routes.js"; // allow nesting chapters inside courses
 
 const router = Router();
 
 // Public routes (anyone can see available courses)
-router.get("/", getAllCourses);
-router.get("/:id", getCourseById);
+router.get("/", optionalAuth, getAllCourses);
+router.get("/:id", optionalAuth, getCourseById);
 
 // Admin / Content Manager routes
 router.use(authenticateToken);

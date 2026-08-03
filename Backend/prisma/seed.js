@@ -115,28 +115,48 @@ async function main() {
 
     // Quiz for topic1_1
     const quiz1 = await prisma.quiz.create({
-        data: { topicId: topic1_1.id, title: 'Alphabet Quiz: A-F', passingScore: 60 },
-    });
-    const q1 = await prisma.question.create({
         data: {
-            quizId: quiz1.id, type: 'SINGLE_CHOICE', text: 'Which word starts with the letter A?', order: 1,
+            topicId: topic1_1.id,
+            title: 'Alphabet Quiz: A-F',
+            description: 'Show what you know about the first six letters of the alphabet!',
+            passingScore: 60,
+        },
+    });
+    await prisma.question.create({
+        data: {
+            quizId: quiz1.id, type: 'SINGLE_CHOICE', text: 'Which word starts with the letter A?', explanation: 'Apple starts with the letter A.', order: 1,
             options: {
                 create: [
                     { text: 'Apple', isCorrect: true, order: 1 },
                     { text: 'Ball', isCorrect: false, order: 2 },
                     { text: 'Cat', isCorrect: false, order: 3 },
+                    { text: 'Dog', isCorrect: false, order: 4 },
                 ],
             },
         },
     });
-    const q2 = await prisma.question.create({
+    await prisma.question.create({
         data: {
-            quizId: quiz1.id, type: 'SINGLE_CHOICE', text: 'Which letter comes after A?', order: 2,
+            quizId: quiz1.id, type: 'SINGLE_CHOICE', text: 'Which letter comes after A?', explanation: 'The alphabet order is A, B, C, D...', order: 2,
             options: {
                 create: [
                     { text: 'C', isCorrect: false, order: 1 },
                     { text: 'B', isCorrect: true, order: 2 },
                     { text: 'D', isCorrect: false, order: 3 },
+                    { text: 'E', isCorrect: false, order: 4 },
+                ],
+            },
+        },
+    });
+    await prisma.question.create({
+        data: {
+            quizId: quiz1.id, type: 'TRUE_FALSE', text: 'The letter F comes after the letter E.', explanation: 'Yes! E comes before F in the alphabet.', order: 3,
+            options: {
+                create: [
+                    { text: 'True', isCorrect: true, order: 1 },
+                    { text: 'False', isCorrect: false, order: 2 },
+                    { text: 'Maybe', isCorrect: false, order: 3 },
+                    { text: 'Not sure', isCorrect: false, order: 4 },
                 ],
             },
         },

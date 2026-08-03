@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { PlusIcon, TrashIcon, ChevronLeftIcon, PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import AdminLessonModal from './components/AdminLessonModal';
+import AdminQuizBuilder from './components/AdminQuizBuilder';
 
 /* ─── Reusable modal shell ─── */
 function Modal({ title, onClose, children }) {
@@ -10,7 +11,7 @@ function Modal({ title, onClose, children }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                    <h2 className="text-lg font-black text-gray-800">{title}</h2>
+                    <h2 className="text-lg font-black text-[#0B3A63]">{title}</h2>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition">
                         <XMarkIcon className="w-5 h-5 text-gray-500" />
                     </button>
@@ -48,7 +49,7 @@ function EditableRow({ label, value, onSave, isImage = false }) {
             {isImage && val ? (
                 <img src={val} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-100" />
             ) : (
-                <span className="text-sm text-kidText font-medium truncate max-w-[200px]">{val || <span className="text-gray-300 italic">None</span>}</span>
+                <span className="text-sm text-[#0B3A63] font-medium truncate max-w-[200px]">{val || <span className="text-gray-300 italic">None</span>}</span>
             )}
             <button onClick={() => setEditing(true)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded-lg transition ml-1">
                 <PencilIcon className="w-3.5 h-3.5 text-gray-400" />
@@ -68,7 +69,7 @@ function EditableRow({ label, value, onSave, isImage = false }) {
                 </div>
             ) : (
                 <input value={val} onChange={e => setVal(e.target.value)}
-                    className="flex-1 text-sm px-2 py-1 rounded-lg border-2 border-kidOrange outline-none font-medium text-kidText"
+                    className="flex-1 text-sm px-2 py-1 rounded-lg border-2 border-[#0F4C81] outline-none font-medium text-[#0B3A63]"
                     autoFocus />
             )}
             <button onClick={handleSave} className="p-1 bg-green-100 hover:bg-green-200 rounded-lg transition">
@@ -93,7 +94,7 @@ function Field({ label, type = 'text', value, onChange, placeholder, required, m
                 placeholder={placeholder}
                 required={required}
                 min={min}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-kidOrange focus:outline-none font-medium text-sm text-gray-800 transition"
+                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-[#0F4C81] focus:outline-none font-medium text-sm text-[#0B3A63] transition"
             />
         </div>
     );
@@ -133,7 +134,8 @@ export default function AdminCourseDetail() {
     const [lessonForm, setLessonForm] = useState({ title: '', description: '', order: 1 });
     const [lessonCoverFile, setLessonCoverFile] = useState(null);
 
-    const [activeLesson, setActiveLesson] = useState(null);
+const [activeLesson, setActiveLesson] = useState(null);
+    const [quizModal, setQuizModal] = useState(null); // { chapterId, topicId, topicName }
     const [saving, setSaving] = useState(false);
 
     // Upload helper
@@ -241,7 +243,7 @@ export default function AdminCourseDetail() {
 
     if (loading) return (
         <div className="flex items-center justify-center h-full">
-            <div className="w-10 h-10 border-4 border-kidOrange border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-10 h-10 border-4 border-[#0F4C81] border-t-transparent rounded-full animate-spin"></div>
         </div>
     );
 
@@ -255,7 +257,7 @@ export default function AdminCourseDetail() {
                     <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
                 </button>
                 <div>
-                    <h1 className="text-3xl font-black text-kidText">{course.title}</h1>
+                    <h1 className="text-3xl font-black text-[#0B3A63]">{course.title}</h1>
                     <p className="text-gray-400 font-bold">Grade {course.gradeLevel} • {course.chapters?.length || 0} chapters</p>
                 </div>
             </div>
@@ -267,7 +269,7 @@ export default function AdminCourseDetail() {
                     setChapterCoverFile(null);
                     setChapterModal(true);
                 }}
-                className="flex items-center gap-2 bg-kidOrange text-white font-bold px-5 py-3 rounded-2xl hover:bg-orange-600 transition shadow-btn mb-6"
+                className="flex items-center gap-2 bg-[#0F4C81] text-white font-bold px-5 py-3 rounded-2xl hover:bg-blue-700 transition shadow-btn mb-6"
             >
                 <PlusIcon className="w-5 h-5" /> Add Chapter
             </button>
@@ -310,14 +312,14 @@ export default function AdminCourseDetail() {
                                     <div className="flex justify-between items-start mb-2">
                                         <div className="flex-1 space-y-1 pr-4">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-black text-kidText">📌 Topic {topic.order}</span>
+                                                <span className="text-sm font-black text-[#0B3A63]">📌 Topic {topic.order}</span>
                                             </div>
                                             <EditableRow label="Title" value={topic.title} onSave={(v) => updateTopicField(chapter.id, topic.id, 'title', v)} />
                                             <EditableRow label="Description" value={topic.description} onSave={(v) => updateTopicField(chapter.id, topic.id, 'description', v)} />
                                             <EditableRow label="Cover" value={topic.coverImage} onSave={(v) => updateTopicField(chapter.id, topic.id, 'coverImage', v)} isImage />
                                         </div>
                                         <div className="flex gap-2 shrink-0">
-                                            <button
+<button
                                                 onClick={() => {
                                                     setLessonForm({ title: '', description: '', order: (topic.lessons?.length || 0) + 1 });
                                                     setLessonCoverFile(null);
@@ -326,6 +328,12 @@ export default function AdminCourseDetail() {
                                                 className="text-[10px] font-bold bg-green-50 text-green-600 px-2 py-1 rounded-lg hover:bg-green-100 transition"
                                             >
                                                 + Lesson
+                                            </button>
+                                            <button
+                                                onClick={() => setQuizModal({ chapterId: chapter.id, topicId: topic.id, topicName: topic.title })}
+                                                className="text-[10px] font-bold bg-purple-50 text-purple-600 px-2 py-1 rounded-lg hover:bg-purple-100 transition"
+                                            >
+                                                📝 Quiz
                                             </button>
                                             <button onClick={() => deleteTopic(chapter.id, topic.id)} className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg">
                                                 <TrashIcon className="w-3.5 h-3.5" />
@@ -346,7 +354,7 @@ export default function AdminCourseDetail() {
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         <button
                                                             onClick={() => setActiveLesson({ chapterId: chapter.id, topicId: topic.id, lesson })}
-                                                            className="text-[10px] font-bold text-kidOrange hover:underline whitespace-nowrap"
+                                                            className="text-[10px] font-bold text-blue-600 hover:underline whitespace-nowrap"
                                                         >
                                                             📄 Content
                                                         </button>
@@ -374,7 +382,7 @@ export default function AdminCourseDetail() {
                         <Field label="Order" type="number" min="1" value={chapterForm.order} onChange={e => setChapterForm({ ...chapterForm, order: parseInt(e.target.value) })} />
                         <FileField label="Cover Image (optional)" onChange={e => setChapterCoverFile(e.target.files[0])} hasFile={!!chapterCoverFile} />
                         <div className="flex gap-3 pt-2">
-                            <button type="submit" disabled={saving} className="flex-1 bg-kidOrange text-white font-bold py-3 rounded-2xl hover:bg-orange-600 transition disabled:opacity-50">
+                            <button type="submit" disabled={saving} className="flex-1 bg-[#0F4C81] text-white font-bold py-3 rounded-2xl hover:bg-blue-700 transition disabled:opacity-50">
                                 {saving ? 'Saving...' : 'Create Chapter'}
                             </button>
                             <button type="button" onClick={() => setChapterModal(false)} className="px-5 bg-gray-100 text-gray-700 font-bold py-3 rounded-2xl hover:bg-gray-200 transition">
@@ -394,7 +402,7 @@ export default function AdminCourseDetail() {
                         <Field label="Order" type="number" min="1" value={topicForm.order} onChange={e => setTopicForm({ ...topicForm, order: parseInt(e.target.value) })} />
                         <FileField label="Cover Image (optional)" onChange={e => setTopicCoverFile(e.target.files[0])} hasFile={!!topicCoverFile} />
                         <div className="flex gap-3 pt-2">
-                            <button type="submit" disabled={saving} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-2xl hover:bg-blue-700 transition disabled:opacity-50">
+                            <button type="submit" disabled={saving} className="flex-1 bg-[#0F4C81] text-white font-bold py-3 rounded-2xl hover:bg-blue-700 transition disabled:opacity-50">
                                 {saving ? 'Saving...' : 'Create Topic'}
                             </button>
                             <button type="button" onClick={() => setTopicModal(null)} className="px-5 bg-gray-100 text-gray-700 font-bold py-3 rounded-2xl hover:bg-gray-200 transition">
@@ -425,7 +433,7 @@ export default function AdminCourseDetail() {
                 </Modal>
             )}
 
-            {/* ── LESSON CONTENT MODAL (existing) ── */}
+{/* ── LESSON CONTENT MODAL (existing) ── */}
             {activeLesson && (
                 <AdminLessonModal
                     courseId={courseId}
@@ -433,6 +441,17 @@ export default function AdminCourseDetail() {
                     topicId={activeLesson.topicId}
                     lesson={activeLesson.lesson}
                     onClose={() => setActiveLesson(null)}
+                />
+            )}
+
+            {/* ── QUIZ BUILDER MODAL ── */}
+            {quizModal && (
+                <AdminQuizBuilder
+                    courseId={courseId}
+                    chapterId={quizModal.chapterId}
+                    topicId={quizModal.topicId}
+                    topicName={quizModal.topicName}
+                    onClose={() => setQuizModal(null)}
                 />
             )}
         </div>

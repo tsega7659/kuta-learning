@@ -29,6 +29,9 @@ import studentRoutes from "./modules/students/routes.js";
 import flatLessonRoutes from "./modules/lessons/flatRoutes.js";
 import uploadRoutes from "./modules/upload/routes.js";
 import quizFlatRoutes from "./modules/quizzes/flatRoutes.js";
+import practiceRoutes from "./modules/practice/routes.js";
+import { getAttempt } from "./modules/quizzes/controllers.js";
+import { authenticateToken } from "./middlewares/authenticateToken.js";
 
 // Serve the uploads folder publicly so the frontend can display the files
 app.use("/uploads", express.static("uploads"));
@@ -40,6 +43,8 @@ app.use("/api/students", studentRoutes);
 app.use("/api/lessons", flatLessonRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/quizzes", quizFlatRoutes);
+app.use("/api/practice", practiceRoutes);
+app.get("/api/quiz-attempts/:id", authenticateToken, getAttempt);
 // ---------------------------------------------------------------------
 
 export default app;

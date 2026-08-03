@@ -26,7 +26,7 @@ export default function QuizResult() {
     // The in-memory submit response is used as a quick fallback while loading.
     useEffect(() => {
         if (attemptId) {
-            api.get(`/quiz-attempts/${attemptId}`)
+            api.get(`/practice/attempts/${attemptId}`)
                 .then(res => setAttempt(res.data))
                 .catch(err => {
                     // Fall back to the submit result if the fetch fails
@@ -58,8 +58,8 @@ export default function QuizResult() {
             <div className="min-h-screen bg-[#FFFDF9] flex flex-col items-center justify-center p-8 text-center">
                 <span className="text-5xl block mb-4">📭</span>
                 <p className="font-bold text-gray-500">{error || 'No result found'}</p>
-                <button onClick={() => navigate('/student/courses')} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">
-                    GO TO COURSES
+                <button onClick={() => navigate('/student/practice')} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">
+                    BACK TO SETS
                 </button>
             </div>
         );
@@ -86,8 +86,8 @@ export default function QuizResult() {
             </h1>
             <p className="text-gray-500 font-bold text-center px-4 mb-8">
                 {passed
-                    ? `Amazing job on "${attempt.quiz?.title || 'the quiz'}"!`
-                    : `You need ${attempt.passingScore}% to pass. Let's practice and try again!`}
+                    ? `Amazing job on "${attempt.topic?.title || 'this module'}"!`
+                    : `You scored ${percentage}%. Let's practice more and try again!`}
             </p>
 
             {/* Score */}
@@ -189,10 +189,10 @@ export default function QuizResult() {
 
             <div className="w-full space-y-4">
                 <button
-                    onClick={() => navigate('/student/courses')}
+                    onClick={() => navigate('/student/practice')}
                     className="kid-btn bg-kidPrimary shadow-[0_6px_0_0_#2563eb]"
                 >
-                    NEXT LESSON
+                    NEW CHALLENGE
                 </button>
                 <button
                     onClick={() => navigate(-1)}

@@ -42,6 +42,7 @@ model User {
   studentProfile StudentProfile?
   lessonProgress LessonProgress[]
   quizAttempts   QuizAttempt[]
+  practiceAttempts PracticeAttempt[]
 }
 
 model StudentProfile {
@@ -92,7 +93,8 @@ model Topic {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   lessons     Lesson[]
-  quiz        Quiz?
+  quiz        Quiz[]
+  practiceAttempts PracticeAttempt[]
 
   @@unique([chapterId, order])
 }
@@ -131,6 +133,7 @@ model Quiz {
   topic        Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   title        String
   passingScore Int           // As a percentage
+  order        Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   questions    Question[]
@@ -149,6 +152,7 @@ model Question {
   updatedAt   DateTime         @updatedAt
   options     QuestionOption[]
   answers     QuizAnswer[]
+  practiceAnswers PracticeAnswer[]
 }
 
 model QuestionOption {
@@ -160,6 +164,7 @@ model QuestionOption {
   imageUrl    String?      // Used for Color Match / image choice quizzes
   order       Int
   answers     QuizAnswer[]
+  practiceAnswers PracticeAnswer[]
 }
 
 model LessonProgress {
@@ -197,5 +202,33 @@ model QuizAnswer {
   selectedOptionId String?
   selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
   textResponse     String?         // Stores letter sequencing for Word Order questions
+  isCorrect        Boolean
+}
+
+model PracticeAttempt {
+  id             String         @id @default(uuid())
+  studentId      String
+  student        User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topicId        String
+  topic          Topic          @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  score          Int
+  maxScore       Int
+  correctAnswers Int            @default(0)
+  passed         Boolean
+  startedAt      DateTime?      @default(now())
+  submittedAt    DateTime?      @default(now())
+  createdAt      DateTime       @default(now())
+  answers        PracticeAnswer[]
+}
+
+model PracticeAnswer {
+  id               String          @id @default(uuid())
+  attemptId        String
+  attempt          PracticeAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOptionId String?
+  selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
+  textResponse     String?         
   isCorrect        Boolean
 }

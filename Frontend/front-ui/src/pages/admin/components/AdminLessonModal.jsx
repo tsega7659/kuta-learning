@@ -90,7 +90,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                 {/* Header */}
                 <div className="bg-gray-50 border-b border-gray-100 p-5 flex justify-between items-center">
                     <div>
-                        <h2 className="text-lg font-black text-kidText">📚 {lesson.title}</h2>
+                        <h2 className="text-lg font-black text-[#0B3A63]">📚 {lesson.title}</h2>
                         <p className="text-xs font-bold text-gray-400 mt-0.5">Manage content blocks below</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition">
@@ -119,7 +119,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                             {TYPE_ICONS[item.type]} {item.type}
                                         </span>
                                         {item.description && (
-                                            <span className="font-bold text-kidText text-sm">"{item.description}"</span>
+                                            <span className="font-bold text-[#0B3A63] text-sm">"{item.description}"</span>
                                         )}
                                     </div>
                                     <div className="text-gray-500 font-medium text-xs mt-1 bg-gray-50 p-2 rounded-lg border border-gray-100 truncate">
@@ -146,7 +146,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                     setFile(null);
                                     if (fileInputRef.current) fileInputRef.current.value = '';
                                 }}
-                                className="px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-kidText text-sm focus:border-kidOrange outline-none"
+                                className="px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-[#0B3A63] text-sm focus:border-[#0F4C81] outline-none"
                             >
                                 <option value="TEXT">📝 Text</option>
                                 <option value="VIDEO">🎬 Video</option>
@@ -160,7 +160,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                                 placeholder='Section label, e.g. "Hear the Word!"'
-                                className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-kidText text-sm focus:border-kidOrange outline-none"
+                                className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-[#0B3A63] text-sm focus:border-[#0F4C81] outline-none"
                             />
                         </div>
 
@@ -171,7 +171,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                     onChange={e => setContentText(e.target.value)}
                                     placeholder="Enter your lesson text here..."
                                     rows={3}
-                                    className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-kidText text-sm focus:border-kidOrange outline-none resize-none"
+                                    className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-[#0B3A63] text-sm focus:border-[#0F4C81] outline-none resize-none"
                                     required
                                 />
                             ) : (
@@ -179,7 +179,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                     type="file"
                                     ref={fileInputRef}
                                     onChange={e => setFile(e.target.files[0])}
-                                    className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-kidText text-sm focus:border-kidOrange outline-none"
+                                    className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-[#0B3A63] text-sm focus:border-[#0F4C81] outline-none"
                                     required
                                     accept={
                                         type === 'IMAGE' ? 'image/*' :
@@ -192,7 +192,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                             <button
                                 disabled={submitting}
                                 type="submit"
-                                className="bg-kidOrange text-white font-bold px-5 py-2.5 rounded-2xl hover:bg-orange-600 transition flex items-center gap-2 shadow-btn disabled:opacity-50 active:scale-95 shrink-0"
+                                className="bg-[#0F4C81] text-white font-bold px-5 py-2.5 rounded-2xl hover:bg-[#0B3A63] transition flex items-center gap-2 shadow-btn disabled:opacity-50 active:scale-95 shrink-0"
                             >
                                 <PlusIcon className="w-4 h-4" />
                                 {submitting ? 'Adding...' : 'Add'}

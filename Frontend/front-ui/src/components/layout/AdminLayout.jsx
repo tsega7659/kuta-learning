@@ -1,12 +1,25 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    HomeIcon,
-    UserGroupIcon,
-    BookOpenIcon,
-    ChartBarIcon,
-    ArrowRightOnRectangleIcon,
+    Squares2X2Icon, BookOpenIcon, AcademicCapIcon,
+    QuestionMarkCircleIcon, DocumentCheckIcon, ChartBarIcon,
+    ClipboardDocumentCheckIcon, BellIcon, Cog6ToothIcon,
+    MagnifyingGlassIcon, ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
+
+const NAV_ITEMS = [
+    { name: 'Dashboard', path: '/admin/dashboard', icon: Squares2X2Icon },
+    { name: 'Lessons', path: '/admin/courses', icon: BookOpenIcon },
+    { name: 'Question Bank', path: '/admin/question-bank', icon: AcademicCapIcon },
+    { name: 'Quizzes', path: '/admin/quizzes', icon: QuestionMarkCircleIcon },
+    { name: 'Mock Exams', path: '/admin/mock-exams', icon: DocumentCheckIcon },
+    { name: 'Analytics', path: '/admin/progress', icon: ChartBarIcon },
+];
+
+const BOTTOM_NAV_ITEMS = [
+    { name: 'Notifications', path: '/admin/notifications', icon: BellIcon },
+    { name: 'Settings', path: '/admin/settings', icon: Cog6ToothIcon },
+];
 
 export default function AdminLayout() {
     const { user, logout } = useAuth();
@@ -17,76 +30,98 @@ export default function AdminLayout() {
         navigate('/login');
     };
 
-    const navItems = [
-        { name: 'Dashboard', path: '/admin/dashboard', icon: HomeIcon },
-        { name: 'Students', path: '/admin/students', icon: UserGroupIcon },
-        { name: 'Courses', path: '/admin/courses', icon: BookOpenIcon },
-        { name: 'Progress', path: '/admin/progress', icon: ChartBarIcon },
-    ];
-
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex h-screen bg-[#F8F9FB] overflow-hidden font-sans">
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 relative z-20">
                 {/* Brand */}
-                <div className="p-6 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-kidOrange rounded-xl flex items-center justify-center">
-                            <span className="text-xl">📚</span>
-                        </div>
-                        <div>
-                            <h2 className="font-black text-kidText text-lg leading-tight">Kuta</h2>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Content Manager</p>
-                        </div>
+                <div className="px-6 py-6 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#0F4C81] rounded-xl flex items-center justify-center">
+                        <span className="text-xl text-white">🎓</span>
+                    </div>
+                    <div>
+                        <h2 className="font-extrabold text-[#0B3A63] text-lg leading-tight">Kuta Learning</h2>
+                        <p className="text-[11px] font-bold text-gray-400">Teacher Portal</p>
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 p-4 space-y-1">
-                    {navItems.map((item) => (
+                {/* Primary Nav */}
+                <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
+                    {NAV_ITEMS.map((item) => (
                         <NavLink
                             key={item.name}
                             to={item.path}
                             className={({ isActive }) =>
-                                `flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${isActive
-                                    ? 'bg-orange-50 text-kidOrange'
-                                    : 'text-gray-400 hover:bg-gray-50 hover:text-kidText'
+                                `flex items-center gap-3 px-6 py-3 font-bold text-sm transition-all relative ${isActive
+                                    ? 'bg-[#0F4C81] text-white rounded-r-full mr-4 shadow-md'
+                                    : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B3A63]'
                                 }`
                             }
                         >
-                            <item.icon className="w-5 h-5" />
+                            <item.icon className="w-5 h-5 shrink-0" />
                             <span>{item.name}</span>
                         </NavLink>
                     ))}
                 </nav>
 
-                {/* User + Logout */}
-                <div className="p-4 border-t border-gray-100">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-9 h-9 bg-kidOrange/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-bold text-kidOrange">
-                                {user?.email?.[0]?.toUpperCase() || 'A'}
-                            </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-kidText truncate">{user?.email}</p>
-                            <p className="text-[10px] text-gray-400 font-bold">Admin</p>
-                        </div>
-                    </div>
+                {/* Secondary Nav + Logout */}
+                <div className="border-t border-gray-100 py-4 space-y-1">
+                    {BOTTOM_NAV_ITEMS.map((item) => (
+                        <NavLink
+                            key={item.name}
+                            to={item.path}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-6 py-2.5 font-bold text-sm transition-all relative ${isActive
+                                    ? 'bg-[#0F4C81] text-white rounded-r-full mr-4'
+                                    : 'text-gray-500 hover:bg-gray-50 hover:text-[#0B3A63]'
+                                }`
+                            }
+                        >
+                            <item.icon className="w-5 h-5 shrink-0" />
+                            <span>{item.name}</span>
+                        </NavLink>
+                    ))}
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 text-gray-400 hover:text-red-500 transition text-sm font-bold w-full px-4 py-2 rounded-xl hover:bg-red-50"
+                        className="w-full mt-2 flex items-center gap-3 px-6 py-2.5 font-bold text-sm text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all text-left"
                     >
-                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                        <ArrowRightOnRectangleIcon className="w-5 h-5 shrink-0" />
                         <span>Logout</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
-                <Outlet />
-            </main>
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 bg-[#F8F9FB]">
+                {/* Top Header */}
+                <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0 relative z-10">
+                    {/* Global Search */}
+                    <div className="flex-1 max-w-2xl relative">
+                        <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-4 top-2.5" />
+                        <input
+                            type="text"
+                            placeholder="Search lessons, students, or resources..."
+                            className="w-full pl-12 pr-4 py-2.5 rounded-full bg-gray-50 border border-transparent hover:border-gray-200 outline-none focus:border-[#0F4C81] focus:bg-white transition text-sm font-bold text-gray-700"
+                        />
+                    </div>
+
+                    {/* User Profile */}
+                    <div className="flex items-center gap-4 ml-8 border-l border-gray-200 pl-8">
+                        <div className="text-right">
+                            <p className="font-extrabold text-[#0B3A63] text-sm">{user?.name || 'Prof. Arthur Kuta'}</p>
+                            <p className="text-[11px] font-bold text-gray-400">Senior Educator</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-[#0F4C81] flex items-center justify-center font-bold text-white shadow-sm ring-2 ring-white">
+                            {user?.name?.[0] || 'A'}
+                        </div>
+                    </div>
+                </header>
+
+                {/* Outlet Wrapper */}
+                <main className="flex-1 overflow-y-auto">
+                    <Outlet />
+                </main>
+            </div>
         </div>
     );
 }

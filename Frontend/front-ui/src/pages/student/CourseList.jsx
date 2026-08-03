@@ -72,12 +72,12 @@ export default function CourseList() {
                                 <div className="w-full text-left">
                                     <div className="flex justify-between items-center text-[12px] font-bold mb-2 px-1">
                                         <span className="text-gray-500 uppercase tracking-widest">Progress</span>
-                                        <span className="text-gray-500">0%</span>
+                                        <span className="text-gray-500">{course.progressPercentage || 0}%</span>
                                     </div>
                                     <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden shadow-inner flex items-center">
                                         <div
                                             className={`h-full ${style.barBg} border-b-[3px] ${style.barBorder} rounded-full min-w-[5%]`}
-                                            style={{ width: `0%` }}
+                                            style={{ width: `${course.progressPercentage || 0}%` }}
                                         ></div>
                                     </div>
                                 </div>

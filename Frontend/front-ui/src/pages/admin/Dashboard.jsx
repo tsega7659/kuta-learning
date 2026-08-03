@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import {
+    BookOpenIcon, UserGroupIcon, AcademicCapIcon,
+    CircleStackIcon, PlusCircleIcon,
+} from '@heroicons/react/24/outline';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({ students: 0, courses: 0 });
-    const [students, setStudents] = useState([]);
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({ students: 0, courses: 0, lessons: 0 });
+    const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -13,10 +21,25 @@ export default function AdminDashboard() {
                     api.get('/students'),
                     api.get('/courses'),
                 ]);
-                setStudents(studentsRes.data);
+
+                const courseList = coursesRes.data || [];
+                setCourses(courseList.slice(0, 3));
+
+                // Count total lessons across all courses
+                let totalLessons = 0;
+                for (const c of courseList) {
+                    try {
+                        const { data: detail } = await api.get(`/courses/${c.id}`);
+                        (detail.chapters || []).forEach(ch =>
+                            (ch.topics || []).forEach(t => { totalLessons += (t.lessons || []).length; })
+                        );
+                    } catch { /* skip */ }
+                }
+
                 setStats({
                     students: studentsRes.data.length,
-                    courses: coursesRes.data.length,
+                    courses: courseList.length,
+                    lessons: totalLessons
                 });
             } catch (err) {
                 console.error(err);
@@ -27,89 +50,124 @@ export default function AdminDashboard() {
         fetchData();
     }, []);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="w-10 h-10 border-4 border-kidOrange border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
+    const statCards = [
+        { label: 'Total Lessons', value: stats.lessons, note: '+4 this week', icon: BookOpenIcon, iconColor: 'text-blue-600 bg-blue-50' },
+        { label: 'Active Students', value: stats.students, note: '+12 new', icon: UserGroupIcon, iconColor: 'text-blue-600 bg-blue-50' },
+        { label: 'Active Courses', value: stats.courses, note: '+2 this term', icon: AcademicCapIcon, iconColor: 'text-blue-600 bg-blue-50' },
+    ];
+
+    const quickActions = [
+        {
+            title: 'Add Question',
+            desc: 'Update your question bank with new assessment items.',
+            btnLabel: 'Open Database',
+            btnIcon: CircleStackIcon,
+            onClick: () => navigate('/admin/question-bank'),
+            dark: false
+        },
+        {
+            title: 'Create Lesson',
+            desc: 'Build interactive curriculum content for your students.',
+            btnLabel: 'Start Editor',
+            btnIcon: PlusCircleIcon,
+            onClick: () => navigate('/admin/courses'),
+            dark: true
+        },
+        {
+            title: 'Create Quiz',
+            desc: 'Design new assessments and track student performance.',
+            btnLabel: 'New Quiz',
+            btnIcon: AcademicCapIcon,
+            onClick: () => navigate('/admin/question-bank'),
+            dark: false
+        }
+    ];
 
     return (
-        <div className="p-8">
-            <h1 className="text-3xl font-black text-kidText mb-2">Dashboard</h1>
-            <p className="text-gray-400 font-bold mb-8">Welcome back, Content Manager!</p>
+        <div className="p-8 font-sans text-gray-800">
+            {/* Welcome Header */}
+            <div className="mb-8">
+                <h1 className="text-4xl font-extrabold text-[#0B3A63] tracking-tight mb-1">Welcome, Teacher!</h1>
+                <p className="text-gray-500 font-medium">Here's what's happening in your classroom today.</p>
+            </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl">👨‍🎓</div>
-                        <div>
-                            <p className="text-3xl font-black text-kidText">{stats.students}</p>
-                            <p className="text-sm font-bold text-gray-400">Students</p>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+                {statCards.map(s => (
+                    <div key={s.label} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm relative">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${s.iconColor}`}>
+                                <s.icon className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-gray-500">{s.label}</p>
+                                <p className="text-3xl font-extrabold text-[#0B3A63]">
+                                    {loading ? '…' : s.value}
+                                </p>
+                            </div>
                         </div>
+                        <span className="absolute top-4 right-4 text-xs font-bold text-orange-500 bg-blue-50 px-2 py-1 rounded-full">
+                            {s.note}
+                        </span>
                     </div>
+                ))}
+            </div>
+
+            {/* Your Courses */}
+            <div className="mb-10">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-extrabold text-[#0B3A63]">Your Courses</h2>
+                    <button onClick={() => navigate('/admin/courses')} className="text-sm font-bold text-blue-600 hover:underline">
+                        Manage All
+                    </button>
                 </div>
-                <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-2xl">📖</div>
-                        <div>
-                            <p className="text-3xl font-black text-kidText">{stats.courses}</p>
-                            <p className="text-sm font-bold text-gray-400">Courses</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white rounded-2xl p-6 shadow-soft border border-gray-100">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl">✅</div>
-                        <div>
-                            <p className="text-3xl font-black text-kidText">--</p>
-                            <p className="text-sm font-bold text-gray-400">Avg. Quiz Score</p>
-                        </div>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {courses.length === 0 && !loading
+                        ? <p className="text-gray-400 font-bold col-span-3">No courses yet.</p>
+                        : courses.map(c => (
+                            <button
+                                key={c.id}
+                                onClick={() => navigate(`/admin/courses/${c.id}`)}
+                                className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5 flex items-center gap-4 hover:shadow-md hover:border-blue-100 transition text-left"
+                            >
+                                <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-700 font-extrabold text-xl">
+                                    Σ
+                                </div>
+                                <div>
+                                    <p className="font-extrabold text-[#0B3A63]">{c.title}</p>
+                                    <p className="text-xs font-bold text-gray-400">{c.gradeLevel || 'All Grades'}</p>
+                                </div>
+                            </button>
+                        ))}
                 </div>
             </div>
 
-            {/* Recent Students */}
-            <div className="bg-white rounded-2xl shadow-soft border border-gray-100">
-                <div className="p-6 border-b border-gray-100">
-                    <h2 className="text-lg font-bold text-kidText">Recent Students</h2>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-100">
-                                <th className="text-left px-6 py-3 text-xs font-bold text-gray-400 uppercase">Name</th>
-                                <th className="text-left px-6 py-3 text-xs font-bold text-gray-400 uppercase">Email</th>
-                                <th className="text-left px-6 py-3 text-xs font-bold text-gray-400 uppercase">Grade</th>
-                                <th className="text-left px-6 py-3 text-xs font-bold text-gray-400 uppercase">Lessons Done</th>
-                                <th className="text-left px-6 py-3 text-xs font-bold text-gray-400 uppercase">Quiz Attempts</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {students.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="px-6 py-10 text-center text-gray-400 font-bold">No students yet.</td>
-                                </tr>
-                            ) : (
-                                students.slice(0, 10).map((s) => (
-                                    <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                                        <td className="px-6 py-4 font-bold text-kidText">{s.studentProfile?.name || '--'}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">{s.email}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-lg text-xs font-bold">
-                                                Grade {s.studentProfile?.gradeLevel || '--'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 font-bold text-kidText">{s._count?.lessonProgress || 0}</td>
-                                        <td className="px-6 py-4 font-bold text-kidText">{s._count?.quizAttempts || 0}</td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {quickActions.map(a => (
+                    <div
+                        key={a.title}
+                        className={`rounded-2xl p-6 border flex flex-col justify-between min-h-[180px] ${a.dark
+                                ? 'bg-[#0F4C81] border-[#0B3A63] text-white'
+                                : 'bg-white border-gray-200 text-gray-800'
+                            } shadow-sm`}
+                    >
+                        <div>
+                            <h3 className={`text-xl font-extrabold mb-2 ${a.dark ? 'text-white' : 'text-[#0B3A63]'}`}>{a.title}</h3>
+                            <p className={`text-sm font-medium mb-5 ${a.dark ? 'text-blue-200' : 'text-gray-500'}`}>{a.desc}</p>
+                        </div>
+                        <button
+                            onClick={a.onClick}
+                            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition self-start ${a.dark
+                                    ? 'bg-white text-[#0F4C81] hover:bg-blue-50'
+                                    : 'bg-[#0F4C81] text-white hover:bg-[#0B3A63]'
+                                }`}
+                        >
+                            <a.btnIcon className="w-5 h-5" />
+                            {a.btnLabel}
+                        </button>
+                    </div>
+                ))}
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, PlayCircleIcon, LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
+import { ChevronLeftIcon, PlayCircleIcon, LockClosedIcon, CheckCircleIcon, TrophyIcon } from '@heroicons/react/24/solid';
 import api from '../../services/api';
 
 // Colors for chapters/topics cycling
@@ -11,10 +11,14 @@ const chapterStyles = [
     { iconBg: 'bg-purple-100', iconColor: 'text-purple-600', accentBar: 'bg-purple-500', borderColor: 'border-purple-200', icon: '🎨' },
 ];
 
-const lessonStatusIcon = (idx) => {
-    if (idx === 0) return { icon: <CheckCircleIcon className="w-6 h-6 text-green-500" />, label: 'Completed', labelColor: 'text-green-500' };
-    if (idx === 1) return { icon: <span className="text-yellow-400 text-lg">⭐</span>, label: 'In Progress', labelColor: 'text-orange-500' };
-    return { icon: <LockClosedIcon className="w-5 h-5 text-gray-400" />, label: 'Locked', labelColor: 'text-gray-400' };
+const lessonStatusIcon = (lesson) => {
+    if (lesson.locked) {
+        return { icon: <LockClosedIcon className="w-5 h-5 text-gray-400" />, label: 'Locked', labelColor: 'text-gray-400' };
+    }
+    if (lesson.completed) {
+        return { icon: <CheckCircleIcon className="w-6 h-6 text-green-500" />, label: 'Completed', labelColor: 'text-green-500' };
+    }
+    return { icon: <span className="text-yellow-400 text-lg">⭐</span>, label: 'In Progress', labelColor: 'text-orange-500' };
 };
 
 export default function CourseDetail() {
@@ -99,7 +103,6 @@ export default function CourseDetail() {
                     chapters.map((chapter, chIdx) => {
                         const style = chapterStyles[chIdx % chapterStyles.length];
                         const topics = (chapter.topics || []).sort((a, b) => a.order - b.order);
-                        let lessonGlobalIdx = 0;
 
                         return (
                             <div key={chapter.id} className="bg-white rounded-[28px] shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden">
@@ -139,12 +142,15 @@ export default function CourseDetail() {
                                                     </div>
                                                     {/* Lessons */}
                                                     {lessons.map((lesson) => {
-                                                        const status = lessonStatusIcon(lessonGlobalIdx++);
+                                                        const status = lessonStatusIcon(lesson);
                                                         return (
                                                             <div
                                                                 key={lesson.id}
-                                                                onClick={() => navigate(`/student/lessons/${lesson.id}`)}
-                                                                className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-orange-50/40 transition active:scale-[0.98]"
+                                                                onClick={() => {
+                                                                    if (lesson.locked) return;
+                                                                    navigate(`/student/lessons/${lesson.id}`);
+                                                                }}
+                                                                className={`flex items-center gap-4 px-5 py-4 ${lesson.locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-orange-50/40 transition active:scale-[0.98]'}`}
                                                             >
                                                                 {/* Lesson icon */}
                                                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${style.iconBg}`}>
@@ -168,6 +174,38 @@ export default function CourseDetail() {
                                                             </div>
                                                         );
                                                     })}
+
+                                                    {/* Quiz entry per topic */}
+                                                    {(topic.quizzes || topic.quiz || []).length > 0 && (() => {
+                                                        const quiz = (topic.quizzes || topic.quiz || [])[0];
+                                                        const isCompleted = !!quiz.completed;
+                                                        return (
+                                                            <button
+                                                                onClick={() => topic.quizAvailable && navigate(`/student/quiz/${quiz.id}`)}
+                                                                disabled={!topic.quizAvailable}
+                                                                className={`w-full flex items-center gap-3 px-5 py-4 transition ${isCompleted ? 'bg-green-50/20 hover:bg-green-50/40' : topic.quizAvailable ? 'cursor-pointer hover:bg-yellow-50/70' : 'cursor-not-allowed opacity-60 bg-gray-50/60'}`}
+                                                            >
+                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${isCompleted ? 'bg-green-100' : topic.quizAvailable ? 'bg-yellow-100' : 'bg-gray-100'}`}>
+                                                                    <TrophyIcon className={`w-7 h-7 ${isCompleted ? 'text-green-500' : topic.quizAvailable ? 'text-yellow-500' : 'text-gray-400'}`} />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0 text-left">
+                                                                    <h4 className="font-bold text-gray-800 text-[15px] truncate">{quiz.title}</h4>
+                                                                    <p className="text-[11px] font-medium">
+                                                                        {isCompleted ? (
+                                                                            <span className="text-green-600 font-extrabold">🎉 E-Certificate Unlocked / Passed!</span>
+                                                                        ) : topic.quizAvailable ? (
+                                                                            <span className="text-gray-500">Passing score: {quiz.passingScore}%</span>
+                                                                        ) : (
+                                                                            <span className="text-gray-400">Complete all lessons to unlock</span>
+                                                                        )}
+                                                                    </p>
+                                                                </div>
+                                                                <span className={`text-[10px] font-bold shrink-0 ${isCompleted ? 'text-green-600' : topic.quizAvailable ? 'text-yellow-600' : 'text-gray-400'}`}>
+                                                                    {isCompleted ? 'PASSED ✅' : topic.quizAvailable ? 'START ▶' : '🔒'}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })()}
                                                 </div>
                                             );
                                         })}

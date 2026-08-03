@@ -1,10 +1,13 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SparklesIcon, CheckBadgeIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
+import { ArrowRightOnRectangleIcon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 export default function HomeProfile() {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
+    const [showGate, setShowGate] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -12,73 +15,135 @@ export default function HomeProfile() {
     };
 
     return (
-        <div className="min-h-screen pb-32">
-            {/* Blue Header Zone */}
-            <div className="bg-kidPrimary pt-16 pb-24 px-6 rounded-b-[48px] shadow-lg relative">
-                <h2 className="text-white/80 font-bold tracking-widest text-sm uppercase text-center mb-6">Kuta Learning</h2>
+        <div className="min-h-screen bg-[#FFFDF9] pb-32">
+            {/* Header */}
+            <div className="pt-12 px-6 pb-6 relative flex justify-between items-center">
+                <h2 className="text-kidOrange font-bold tracking-widest text-sm uppercase">Kuta Learning</h2>
 
-                {/* Logout */}
-                <button onClick={handleLogout} className="absolute top-6 right-6 bg-white/20 p-2 rounded-full text-white hover:bg-white/30 backdrop-blur-sm">
-                    <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                </button>
-
-                <div className="absolute top-16 right-16 bg-white/20 px-3 py-1.5 rounded-full flex gap-1 items-center">
-                    <span className="text-yellow-300">★</span>
-                    <span className="text-white font-bold">1,250</span>
+                <div className="flex gap-2">
+                    <button onClick={() => setShowGate(true)} title="Parent Settings" className="bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+                        <Cog6ToothIcon className="w-5 h-5" />
+                    </button>
+                    <button onClick={handleLogout} title="Logout" className="bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+                        <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                    </button>
                 </div>
+            </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 bg-white rounded-full border-4 border-blue-200 shadow-lg flex justify-center items-center overflow-hidden">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'kid'}`} alt="Avatar" className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-white">Hey, {user?.name || 'Explorer'}!</h1>
-                        <p className="text-blue-100 font-bold text-sm mt-1">
-                            {user?.gradeLevel ? `Grade ${user.gradeLevel}` : 'Ready for a new adventure?'}
+            <div className="px-5">
+                <div className="bg-white rounded-[32px] p-6 shadow-soft border border-gray-100 flex items-center justify-center min-h-[300px]">
+                    <div className="text-center">
+                        <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden border-4 border-white shadow-xl">
+                            <span className="text-5xl">👤</span>
+                        </div>
+                        <h1 className="text-3xl font-extrabold text-kidText mb-1 tracking-tight">{user?.name || 'Explorer'}</h1>
+                        <p className="text-gray-400 font-bold mb-4">{user?.email}</p>
+                        <p className="text-sm font-bold text-gray-500 px-6 mt-6">
+                            Progress tracking and analytics will appear here as you complete more lessons!
                         </p>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content (overlapping header) */}
-            <div className="px-5 -mt-12 space-y-6 relative z-10">
-                {/* Continue Playing Card */}
-                <div
-                    onClick={() => navigate('/student/courses')}
-                    className="bg-white rounded-[32px] p-5 shadow-soft border border-gray-100 cursor-pointer hover:scale-[1.02] transition-transform"
-                >
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-extrabold text-kidText text-lg">Browse Courses</h3>
-                        <span className="bg-orange-100 text-kidOrange font-bold px-3 py-1 rounded-full text-xs">Explore →</span>
-                    </div>
-                    <p className="text-gray-400 font-bold text-sm">Tap here to see all available courses and start learning!</p>
-                </div>
+            {showGate && <ParentGateModal onClose={() => setShowGate(false)} />}
+        </div>
+    );
+}
 
-                {/* Badges Earned */}
-                <div>
-                    <h3 className="font-extrabold text-kidText text-lg mb-4 flex items-center gap-2">
-                        Badges Earned <SparklesIcon className="w-5 h-5 text-yellow-400" />
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-yellow-50 border-2 border-yellow-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-soft">
-                            <span className="text-4xl mb-2">⭐</span>
-                            <span className="font-bold text-kidText text-xs">First Star</span>
-                        </div>
-                        <div className="bg-purple-50 border-2 border-purple-100 rounded-2xl p-4 flex flex-col items-center justify-center shadow-soft">
-                            <span className="text-4xl mb-2">🧩</span>
-                            <span className="font-bold text-kidText text-xs">Puzzle Master</span>
-                        </div>
-                    </div>
-                </div>
+function ParentGateModal({ onClose }) {
+    const [question, setQuestion] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [checking, setChecking] = useState(false);
 
-                {/* User Info Card */}
-                <div className="bg-white rounded-[32px] p-5 shadow-soft border border-gray-100">
-                    <h3 className="font-extrabold text-kidText text-lg mb-3">My Profile</h3>
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-gray-400 font-bold">Name</span><span className="font-bold text-kidText">{user?.name || '--'}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-400 font-bold">Email</span><span className="font-bold text-kidText">{user?.email || '--'}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-400 font-bold">Grade</span><span className="font-bold text-kidText">{user?.gradeLevel ? `Grade ${user.gradeLevel}` : '--'}</span></div>
-                    </div>
+    // Some questions might be MULTIPLE_CHOICE
+    const [selectedId, setSelectedId] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    useEffect(() => {
+        api.get('/practice/random-question')
+            .then(res => setQuestion(res.data))
+            .catch(err => setError(err.response?.data?.message || 'Failed to load question'))
+            .finally(() => setLoading(false));
+    }, []);
+
+    const toggleOption = (id) => {
+        if (!question) return;
+        if (question.type === 'MULTIPLE_CHOICE') {
+            if (selectedIds.includes(id)) setSelectedIds(prev => prev.filter(x => x !== id));
+            else setSelectedIds(prev => [...prev, id]);
+        } else {
+            setSelectedId(id);
+        }
+    };
+
+    const verify = async () => {
+        if (!selectedId && selectedIds.length === 0) return;
+        setChecking(true);
+        try {
+            const res = await api.post('/practice/random-question/verify', {
+                questionId: question.id,
+                selectedOptionId: selectedId,
+                selectedOptionIds: selectedIds
+            });
+            if (res.data.isCorrect) {
+                alert('Access Granted (Placeholder for Parent Settings Route)');
+                onClose();
+            } else {
+                alert('Incorrect answer. Access denied.');
+                onClose();
+            }
+        } catch (err) {
+            alert('Error verifying answer');
+        } finally {
+            setChecking(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden animate-spring-up shadow-2xl relative">
+                <button onClick={onClose} className="absolute top-4 right-4 bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200">
+                    <XMarkIcon className="w-5 h-5" />
+                </button>
+
+                <div className="p-6 pt-10 text-center">
+                    <h2 className="text-xl font-extrabold text-kidText mb-1">Parent Settings</h2>
+                    <p className="text-sm font-bold text-gray-400 mb-6 tracking-wide">Please answer to continue</p>
+
+                    {loading ? (
+                        <div className="py-10 flex justify-center"><div className="w-8 h-8 border-4 border-kidPrimary border-t-transparent rounded-full animate-spin"></div></div>
+                    ) : error ? (
+                        <div className="py-10"><p className="text-sm font-bold text-red-500">{error}</p></div>
+                    ) : (
+                        <div className="text-left space-y-4">
+                            <h3 className="font-bold text-kidText text-lg mb-4 text-center">{question.text}</h3>
+                            <div className="space-y-2">
+                                {question.options.map(opt => {
+                                    const isSel = question.type === 'MULTIPLE_CHOICE' ? selectedIds.includes(opt.id) : selectedId === opt.id;
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => toggleOption(opt.id)}
+                                            className={`w-full p-4 rounded-xl border-2 text-left font-bold transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50 text-kidPrimary items-center flex gap-3' : 'border-gray-200 bg-white text-gray-600'
+                                                }`}
+                                        >
+                                            {isSel && <span className="w-5 h-5 bg-kidPrimary text-white flex items-center justify-center rounded shrink-0">✓</span>}
+                                            {opt.text}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <button
+                                onClick={verify}
+                                disabled={checking || (!selectedId && selectedIds.length === 0)}
+                                className="w-full mt-4 bg-kidOrange text-white font-black py-4 rounded-full shadow-[0_4px_0_0_#c2410c] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50"
+                            >
+                                {checking ? 'CHECKING...' : 'CONTINUE'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
