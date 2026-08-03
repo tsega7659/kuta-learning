@@ -13,8 +13,6 @@ const TYPE_ICONS = {
 export default function AdminLessonModal({ courseId, chapterId, topicId, lesson, onClose }) {
     const [contents, setContents] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // New Content Form
     const [type, setType] = useState('TEXT');
     const [content, setContentText] = useState('');
     const [description, setDescription] = useState('');

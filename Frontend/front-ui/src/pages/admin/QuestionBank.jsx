@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     PlusIcon, ArrowDownTrayIcon, MagnifyingGlassIcon,
     FunnelIcon, ArrowPathIcon, EyeIcon, PencilIcon, TrashIcon,
@@ -24,8 +25,10 @@ export default function AdminQuestionBank() {
     // Data Fetching
     // ──────────────────────────────────────────────
     const [courses, setCourses] = useState([]);
+    const [fullCourseTree, setFullCourseTree] = useState([]);
     const [allQuestions, setAllQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchParams] = useSearchParams();
 
     const loadData = async () => {
         setLoading(true);
@@ -33,15 +36,19 @@ export default function AdminQuestionBank() {
             const { data: coursesList } = await api.get('/courses');
             setCourses(coursesList);
 
+            const fetchedTree = [];
             let flatQs = [];
             for (const course of coursesList) {
                 const { data: detail } = await api.get(`/courses/${course.id}`);
+                fetchedTree.push(detail);
+
+                const quizFetches = [];
                 (detail.chapters || []).forEach(ch => {
                     (ch.topics || []).forEach(t => {
                         (t.quiz || []).forEach(qGroup => {
-                            (qGroup.questions || []).forEach(q => {
-                                flatQs.push({
-                                    ...q,
+                            quizFetches.push({
+                                url: `/courses/${course.id}/chapters/${ch.id}/topics/${t.id}/quiz`,
+                                meta: {
                                     courseId: course.id,
                                     courseTitle: course.title,
                                     chapterId: ch.id,
@@ -49,15 +56,23 @@ export default function AdminQuestionBank() {
                                     topicId: t.id,
                                     topicTitle: t.title,
                                     quizId: qGroup.id
-                                });
+                                }
                             });
                         });
                     });
                 });
+
+                await Promise.all(quizFetches.map(async (qf) => {
+                    try {
+                        const { data: qDetail } = await api.get(qf.url);
+                        (qDetail.questions || []).forEach(q => {
+                            flatQs.push({ ...q, ...qf.meta });
+                        });
+                    } catch { }
+                }));
             }
-            // Sort by updated/created
-            flatQs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setAllQuestions(flatQs);
+            setFullCourseTree(fetchedTree);
+            setAllQuestions(flatQs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
         } catch (err) {
             console.error('Failed to load questions', err);
         } finally {
@@ -71,34 +86,39 @@ export default function AdminQuestionBank() {
     // Filters & Pagination
     // ──────────────────────────────────────────────
     const [search, setSearch] = useState('');
-    const [selCourse, setSelCourse] = useState('ALL');
-    const [selSubject, setSelSubject] = useState('ALL');
-    const [selTopic, setSelTopic] = useState('ALL');
+    const [selCourse, setSelCourse] = useState(searchParams.get('course') || 'ALL');
+    const [selSubject, setSelSubject] = useState(searchParams.get('subject') || 'ALL');
+    const [selTopic, setSelTopic] = useState(searchParams.get('topic') || 'ALL');
     const [selType, setSelType] = useState('ALL');
 
-    // Auto-reset dependent dropdowns
-    useEffect(() => { setSelSubject('ALL'); setSelTopic('ALL'); }, [selCourse]);
-    useEffect(() => { setSelTopic('ALL'); }, [selSubject]);
+    // Auto-reset dependent dropdowns (only if initialized)
+    const handleCourseChange = (v) => { setSelCourse(v); setSelSubject('ALL'); setSelTopic('ALL'); }
+    const handleSubjectChange = (v) => { setSelSubject(v); setSelTopic('ALL'); }
 
     const [page, setPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
 
-    // Derived dropdown options
+    // Derived dropdown options from TRUE course structure!
     const availableSubjects = useMemo(() => {
-        const qs = selCourse === 'ALL' ? allQuestions : allQuestions.filter(q => q.courseId === selCourse);
-        const unique = new Map();
-        qs.forEach(q => unique.set(q.chapterId, q.chapterTitle));
-        return Array.from(unique.entries()).map(([id, title]) => ({ id, title }));
-    }, [allQuestions, selCourse]);
+        const targetCourses = selCourse === 'ALL' ? fullCourseTree : fullCourseTree.filter(c => c.id === selCourse);
+        const subjects = [];
+        targetCourses.forEach(c => {
+            (c.chapters || []).forEach(ch => subjects.push({ id: ch.id, title: ch.title }));
+        });
+        return subjects;
+    }, [fullCourseTree, selCourse]);
 
     const availableTopics = useMemo(() => {
-        let qs = allQuestions;
-        if (selCourse !== 'ALL') qs = qs.filter(q => q.courseId === selCourse);
-        if (selSubject !== 'ALL') qs = qs.filter(q => q.chapterId === selSubject);
-        const unique = new Map();
-        qs.forEach(q => unique.set(q.topicId, q.topicTitle));
-        return Array.from(unique.entries()).map(([id, title]) => ({ id, title }));
-    }, [allQuestions, selCourse, selSubject]);
+        const targetCourses = selCourse === 'ALL' ? fullCourseTree : fullCourseTree.filter(c => c.id === selCourse);
+        const topics = [];
+        targetCourses.forEach(c => {
+            const chaps = selSubject === 'ALL' ? (c.chapters || []) : (c.chapters || []).filter(ch => ch.id === selSubject);
+            chaps.forEach(ch => {
+                (ch.topics || []).forEach(t => topics.push({ id: t.id, title: t.title }));
+            });
+        });
+        return topics;
+    }, [fullCourseTree, selCourse, selSubject]);
 
     const filtered = useMemo(() => {
         return allQuestions.filter(q => {
@@ -137,6 +157,21 @@ export default function AdminQuestionBank() {
         loadData(); // refresh table
     };
 
+    const handleCreateQuestion = () => {
+        if (selCourse === 'ALL' || selSubject === 'ALL' || selTopic === 'ALL') {
+            alert('Please select a Course, Subject, and Topic from the dropdown filters first in order to add a question directly.');
+            return;
+        }
+        const topicObj = availableTopics.find(t => t.id === selTopic);
+        setBuilderContext({
+            courseId: selCourse,
+            chapterId: selSubject,
+            topicId: selTopic,
+            topicTitle: topicObj?.title || 'Selected Topic',
+            defaultOpenMode: 'question'
+        });
+    };
+
     return (
         <div className="min-h-screen bg-[#F8F9FB] p-8 text-gray-800 font-sans">
 
@@ -153,7 +188,7 @@ export default function AdminQuestionBank() {
                         <ArrowDownTrayIcon className="w-4 h-4" /> Bulk Import
                     </button>
                     <button
-                        onClick={() => setShowTopicSelect(true)}
+                        onClick={handleCreateQuestion}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#0F4C81] text-white font-bold hover:bg-[#0B3A63] transition shadow-sm"
                     >
                         <PlusIcon className="w-5 h-5" /> Create Question
@@ -168,7 +203,7 @@ export default function AdminQuestionBank() {
                 <div className="flex flex-col min-w-[150px]">
                     <label className="text-[11px] font-bold text-gray-500 tracking-wide mb-1">Course</label>
                     <select
-                        value={selCourse} onChange={e => setSelCourse(e.target.value)}
+                        value={selCourse} onChange={e => handleCourseChange(e.target.value)}
                         className="w-full border border-gray-200 rounded-lg p-2 font-bold text-sm bg-gray-50 outline-none focus:border-[#0F4C81] text-gray-700 cursor-pointer"
                     >
                         <option value="ALL">All Courses</option>
@@ -180,7 +215,7 @@ export default function AdminQuestionBank() {
                 <div className="flex flex-col min-w-[150px]">
                     <label className="text-[11px] font-bold text-gray-500 tracking-wide mb-1">Subject</label>
                     <select
-                        value={selSubject} onChange={e => setSelSubject(e.target.value)}
+                        value={selSubject} onChange={e => handleSubjectChange(e.target.value)}
                         className="w-full border border-gray-200 rounded-lg p-2 font-bold text-sm bg-gray-50 outline-none focus:border-[#0F4C81] text-gray-700 cursor-pointer"
                     >
                         <option value="ALL">Select Subject</option>
@@ -354,6 +389,7 @@ export default function AdminQuestionBank() {
                             topicId={builderContext.topicId}
                             topicName={builderContext.topicTitle}
                             onClose={handleCloseBuilder}
+                            defaultOpenMode={builderContext.defaultOpenMode}
                         />
                     </div>
                 </div>

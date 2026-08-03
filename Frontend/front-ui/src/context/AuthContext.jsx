@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // On mount, check if we have a stored token and fetch user
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -29,7 +28,6 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => {
         const { data } = await api.post('/auth/login', { email, password });
         localStorage.setItem('token', data.token);
-        // Fetch user profile after login
         const profile = await api.get('/auth/me');
         setUser(profile.data);
         return profile.data;

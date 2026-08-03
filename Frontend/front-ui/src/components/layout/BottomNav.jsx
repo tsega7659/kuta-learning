@@ -7,7 +7,6 @@ export default function BottomNav() {
         { name: 'Home', path: '/student/home', Outline: HomeIcon, Solid: HomeSolid },
         { name: 'Learn', path: '/student/courses', Outline: BookOpenIcon, Solid: BookSolid },
         { name: 'Practice', path: '/student/practice', Outline: PencilSquareIcon, Solid: PencilSolid },
-        { name: 'Games', path: '/student/games', Outline: PuzzlePieceIcon, Solid: PuzzleSolid },
         { name: 'Profile', path: '/student/profile', Outline: UserIcon, Solid: UserSolid },
     ];
 

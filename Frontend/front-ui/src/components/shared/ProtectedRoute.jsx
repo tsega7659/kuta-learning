@@ -20,7 +20,6 @@ export default function ProtectedRoute({ allowedRoles }) {
     }
 
     if (allowedRoles && !allowedRoles.includes(user.role)) {
-        // Redirect to appropriate home based on role
         if (user.role === 'STUDENT') return <Navigate to="/student/home" replace />;
         if (user.role === 'CONTENT_MANAGER') return <Navigate to="/admin/dashboard" replace />;
         return <Navigate to="/login" replace />;

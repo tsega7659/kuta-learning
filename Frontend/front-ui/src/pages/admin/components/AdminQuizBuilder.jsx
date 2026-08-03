@@ -5,19 +5,18 @@ import {
 } from '@heroicons/react/24/outline';
 
 const QUESTION_TYPES = [
-    { value: 'SINGLE_CHOICE', label: 'Single Choice', icon: '🔘' },
-    { value: 'MULTIPLE_CHOICE', label: 'Multiple Answer', icon: '☑️' },
-    { value: 'TRUE_FALSE', label: 'True / False', icon: '✅' },
-    { value: 'COLOR_MATCH', label: 'Color Match', icon: '🎨' },
-    { value: 'WORD_ORDER', label: 'Word Order', icon: '🔤' },
-    { value: 'MATCHING', label: 'Matching', icon: '🔗' },
-    { value: 'FILL_IN_BLANK', label: 'Fill in Blank', icon: '✏️' },
-    { value: 'DRAG_AND_DROP', label: 'Drag & Drop', icon: '🖱️' },
+    { value: 'SINGLE_CHOICE', label: 'Single Choice', icon: '' },
+    { value: 'MULTIPLE_CHOICE', label: 'Multiple Answer', icon: '' },
+    { value: 'TRUE_FALSE', label: 'True / False', icon: '' },
+    { value: 'COLOR_MATCH', label: 'Color Match', icon: '' },
+    { value: 'WORD_ORDER', label: 'Word Order', icon: '' },
+    { value: 'MATCHING', label: 'Matching', icon: '' },
+    { value: 'FILL_IN_BLANK', label: 'Fill in Blank', icon: '' },
+    { value: 'DRAG_AND_DROP', label: 'Drag & Drop', icon: '' },
 ];
 
 const TYPE_ICONS = QUESTION_TYPES.reduce((acc, t) => { acc[t.value] = t.icon; return acc; }, {});
-
-export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicName, onClose }) {
+export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicName, onClose, defaultOpenMode }) {
     const [quiz, setQuiz] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -32,10 +31,8 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         return res.data.url;
     };
 
-    // Quiz form
     const [quizForm, setQuizForm] = useState({ title: '', description: '', passingScore: 60 });
 
-    // Question form
     const [showQuestionForm, setShowQuestionForm] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState(null);
     const [questionForm, setQuestionForm] = useState({
@@ -55,26 +52,52 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
     const quizUrl = `/courses/${courseId}/chapters/${chapterId}/topics/${topicId}/quiz`;
 
     const fetchQuiz = async () => {
-        try {
-            const res = await api.get(quizUrl);
-            setQuiz(res.data);
-            if (res.data) {
-                setQuizForm({
-                    title: res.data.title || '',
-                    description: res.data.description || '',
-                    passingScore: res.data.passingScore || 60,
-                });
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
+        const res = await api.get(quizUrl);
+        setQuiz(res.data);
+        if (res.data) {
+            setQuizForm({
+                title: res.data.title || '',
+                description: res.data.description || '',
+                passingScore: res.data.passingScore || 60,
+            });
         }
+        return res.data;
     };
 
-    useEffect(() => { fetchQuiz(); }, [topicId]);
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const data = await fetchQuiz();
+                if (data && defaultOpenMode === 'question') {
+                    // wait a tick then open modal
+                    setTimeout(() => openAddQuestion(), 100);
+                }
+            } catch (err) {
+                // If not found and user wants to add question directly, automatically create a holding quiz/bank
+                if (defaultOpenMode === 'question') {
+                    try {
+                        const newQuizRes = await api.post(quizUrl, {
+                            title: `${topicName} Question Bank`,
+                            description: `Auto-generated question bank for ${topicName}`,
+                            passingScore: 60,
+                        });
+                        setQuiz(newQuizRes.data);
+                        setQuizForm({ title: newQuizRes.data.title, description: newQuizRes.data.description, passingScore: 60 });
+                        setTimeout(() => openAddQuestion(), 100);
+                    } catch (e) {
+                        console.error('Failed to auto-create quiz', e);
+                    }
+                } else {
+                    console.error('Quiz not found', err);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+        init();
+    }, [topicId, defaultOpenMode]);
 
-    // ── Quiz CRUD ──
+
     const handleCreateQuiz = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -120,7 +143,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         }
     };
 
-    // ── Question form helpers ──
+
     const openAddQuestion = () => {
         setEditingQuestion(null);
         setQuestionForm({
@@ -144,14 +167,12 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         const type = q.type || 'SINGLE_CHOICE';
         let options = (q.options || []).map(o => {
             const decoded = { ...o, imageFile: null };
-            // Restore matchAnswer for MATCHING questions
             if (type === 'MATCHING' && o.imageUrl?.startsWith('match::')) {
                 decoded.matchAnswer = o.imageUrl.replace('match::', '');
                 decoded.imageUrl = '';
             }
             return decoded;
         });
-        // Ensure minimum options per type
         if (type === 'TRUE_FALSE') {
             while (options.length < 2) options.push({ text: '', isCorrect: false, imageUrl: '' });
         } else if (type === 'WORD_ORDER' || type === 'FILL_IN_BLANK' || type === 'DRAG_AND_DROP') {
@@ -172,7 +193,6 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         setShowQuestionForm(true);
     };
 
-    // Reset options/answer when the question type changes
     const handleTypeChange = (type) => {
         setQuestionForm(prev => {
             let options;
@@ -182,18 +202,15 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                     { text: 'False', isCorrect: false, imageUrl: '', imageFile: null },
                 ];
             } else if (type === 'WORD_ORDER' || type === 'DRAG_AND_DROP') {
-                // Store the correct word in text; student will see letters scrambled
                 options = [{ text: '', isCorrect: true, imageUrl: '', imageFile: null }];
             } else if (type === 'FILL_IN_BLANK') {
                 options = [{ text: '', isCorrect: true, imageUrl: '', imageFile: null }];
             } else if (type === 'MATCHING') {
-                // Each option stores question in text and answer in imageUrl (repurposed as answer field)
                 options = [
                     { text: '', matchAnswer: '', isCorrect: true, imageUrl: '', imageFile: null },
                     { text: '', matchAnswer: '', isCorrect: true, imageUrl: '', imageFile: null },
                 ];
             } else {
-                // SINGLE_CHOICE, MULTIPLE_CHOICE, COLOR_MATCH
                 options = [
                     { text: '', isCorrect: false, imageUrl: '', imageFile: null },
                     { text: '', isCorrect: false, imageUrl: '', imageFile: null },
@@ -208,7 +225,6 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
     const setOption = (idx, field, value) => {
         setQuestionForm(prev => {
             const options = [...prev.options];
-            // For single-select types, uncheck others when one is marked correct
             const singleSelect = prev.type !== 'MULTIPLE_CHOICE';
             if (field === 'isCorrect' && value && singleSelect) {
                 options.forEach(o => { o.isCorrect = false; });
@@ -237,13 +253,9 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         setSaving(true);
         try {
             const uploadedResourceUrl = await uploadFile(questionForm.resourceFile);
-
-            // For MATCHING, we store the answer in a special JSON imageUrl format
-            // e.g. imageUrl = "match::<answer>" — no image upload needed
             const uploadedOptions = await Promise.all(questionForm.options.map(async (o, i) => {
                 let imageUrl = null;
                 if (questionForm.type === 'MATCHING') {
-                    // encode matchAnswer into imageUrl field as "match::<answer>"
                     imageUrl = `match::${o.matchAnswer || ''}`;
                 } else {
                     imageUrl = (o.imageFile ? await uploadFile(o.imageFile) : o.imageUrl) || null;
@@ -271,15 +283,12 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                     explanation: questionForm.explanation,
                     resourceUrl: uploadedResourceUrl || questionForm.resourceUrl || null,
                 });
-
-                // Delete removed options
                 const existingOptionIds = questionForm.options.map(o => o.id).filter(Boolean);
                 const deletedOptions = (editingQuestion.options || []).filter(o => !existingOptionIds.includes(o.id));
                 for (const dOpt of deletedOptions) {
                     await api.delete(`${quizUrl}/${quiz.id}/questions/${editingQuestion.id}/options/${dOpt.id}`);
                 }
 
-                // Add or update options
                 for (const opt of questionForm.options) {
                     const uploadedImageUrl = opt.imageFile ? await uploadFile(opt.imageFile) : opt.imageUrl;
 

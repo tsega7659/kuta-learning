@@ -13,12 +13,10 @@ const NAV_ITEMS = [
     { name: 'Question Bank', path: '/admin/question-bank', icon: AcademicCapIcon },
     { name: 'Quizzes', path: '/admin/quizzes', icon: QuestionMarkCircleIcon },
     { name: 'Mock Exams', path: '/admin/mock-exams', icon: DocumentCheckIcon },
-    { name: 'Analytics', path: '/admin/progress', icon: ChartBarIcon },
 ];
 
 const BOTTOM_NAV_ITEMS = [
-    { name: 'Notifications', path: '/admin/notifications', icon: BellIcon },
-    { name: 'Settings', path: '/admin/settings', icon: Cog6ToothIcon },
+    
 ];
 
 export default function AdminLayout() {

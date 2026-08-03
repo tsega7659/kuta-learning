@@ -78,7 +78,7 @@ export default function AdminDashboard() {
             desc: 'Design new assessments and track student performance.',
             btnLabel: 'New Quiz',
             btnIcon: AcademicCapIcon,
-            onClick: () => navigate('/admin/question-bank'),
+            onClick: () => navigate('/admin/quizzes'),
             dark: false
         }
     ];
@@ -148,8 +148,8 @@ export default function AdminDashboard() {
                     <div
                         key={a.title}
                         className={`rounded-2xl p-6 border flex flex-col justify-between min-h-[180px] ${a.dark
-                                ? 'bg-[#0F4C81] border-[#0B3A63] text-white'
-                                : 'bg-white border-gray-200 text-gray-800'
+                            ? 'bg-[#0F4C81] border-[#0B3A63] text-white'
+                            : 'bg-white border-gray-200 text-gray-800'
                             } shadow-sm`}
                     >
                         <div>
@@ -159,8 +159,8 @@ export default function AdminDashboard() {
                         <button
                             onClick={a.onClick}
                             className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition self-start ${a.dark
-                                    ? 'bg-white text-[#0F4C81] hover:bg-blue-50'
-                                    : 'bg-[#0F4C81] text-white hover:bg-[#0B3A63]'
+                                ? 'bg-white text-[#0F4C81] hover:bg-blue-50'
+                                : 'bg-[#0F4C81] text-white hover:bg-[#0B3A63]'
                                 }`}
                         >
                             <a.btnIcon className="w-5 h-5" />
