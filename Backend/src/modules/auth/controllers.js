@@ -58,6 +58,46 @@ export const login = async (req, res) => {
     }
 };
 
+export const forgotPassword = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { email } = req.body;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return res.status(404).json({ message: "No account found with this email address." });
+
+        res.json({ found: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const resetPassword = async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { email, password } = req.body;
+
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) return res.status(404).json({ message: "No account found with this email address." });
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        await prisma.user.update({
+            where: { email },
+            data: { passwordHash },
+        });
+
+        res.json({ message: "Password updated successfully." });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 export const me = async (req, res) => {
     try {
         const user = await prisma.user.findUnique({

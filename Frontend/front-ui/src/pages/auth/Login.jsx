@@ -1,18 +1,22 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 import { FcGoogle } from 'react-icons/fc';
 import { FaApple } from 'react-icons/fa';
 
 export default function Login() {
-    const [email, setEmail] = useState('');
+    const navigate = useNavigate();
+    const location = useLocation();
+    const registrationSuccess = location.state?.registered;
+    const registeredEmail = location.state?.email;
+
+    const [email, setEmail] = useState(registeredEmail || '');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
-    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -42,6 +46,11 @@ export default function Login() {
 
                 <div className="rounded-[24px] bg-white/85 border border-gray-100 p-6 shadow-[0_10px_40px_rgba(36,78,138,0.08)]">
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {registrationSuccess && (
+                            <div className="bg-green-50 text-green-700 px-4 py-3 rounded-2xl text-sm font-bold border border-green-100">
+                                Account created successfully! Please log in{registeredEmail ? ` with ${registeredEmail}` : ''}.
+                            </div>
+                        )}
                         {error && (
                             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-2xl text-sm font-bold border border-red-100">
                                 {error}
@@ -91,7 +100,7 @@ export default function Login() {
                         </div>
 
                         <div className="flex justify-end">
-                            <a href="#" className="text-sm font-bold text-blue-600 hover:underline">Forgot Password?</a>
+                            <Link to="/forgot-password" className="text-sm font-bold text-blue-600 hover:underline">Forgot Password?</Link>
                         </div>
 
                         <button

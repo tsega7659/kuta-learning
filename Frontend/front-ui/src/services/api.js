@@ -22,7 +22,7 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401 || error.response?.status === 403) {
             // If token is expired/invalid, clear it
-            if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            if (!['/login', '/register', '/forgot-password'].includes(window.location.pathname)) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 window.location.href = '/login';

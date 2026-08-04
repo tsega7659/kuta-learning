@@ -34,11 +34,7 @@ export function AuthProvider({ children }) {
     };
 
     const register = async (email, password, name, gradeLevel) => {
-        const { data } = await api.post('/auth/register', { email, password, name, gradeLevel });
-        localStorage.setItem('token', data.token);
-        const profile = await api.get('/auth/me');
-        setUser(profile.data);
-        return profile.data;
+        await api.post('/auth/register', { email, password, name, gradeLevel });
     };
 
     const logout = () => {

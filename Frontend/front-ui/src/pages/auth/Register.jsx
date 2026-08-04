@@ -24,7 +24,7 @@ export default function Register() {
         setLoading(true);
         try {
             await register(email, password, name, parseInt(gradeLevel));
-            navigate('/student/login');
+            navigate('/login', { state: { registered: true, email } });
         } catch (err) {
             setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Registration failed.');
         } finally {
