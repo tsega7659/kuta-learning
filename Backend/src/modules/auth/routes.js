@@ -11,7 +11,7 @@ router.post(
         body("email").isEmail(),
         body("password").isLength({ min: 6 }),
         body("name").notEmpty(),
-        body("gradeLevel").isInt({ min: 1, max: 4 }),
+        body("gradeLevel").isInt({ min: 1, max: 12 }),
     ],
     register
 );
