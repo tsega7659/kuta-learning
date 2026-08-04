@@ -1,12 +1,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, SpeakerWaveIcon } from '@heroicons/react/24/solid';
+import {
+    FaChevronLeft, FaChevronRight, FaCircleCheck, FaVolumeHigh,
+    FaCircleDot, FaSquareCheck, FaPalette, FaFont, FaLink, FaPencil,
+    FaHandPointer, FaArrowRight, FaCheck, FaCircleQuestion, FaInbox,
+    FaCircleXmark,
+} from 'react-icons/fa6';
 import api from '../../services/api';
 
 const TYPE_ICONS = {
-    SINGLE_CHOICE: '🔘', MULTIPLE_CHOICE: '☑️', TRUE_FALSE: '✅',
-    COLOR_MATCH: '🎨', WORD_ORDER: '🔤', MATCHING: '🔗',
-    FILL_IN_BLANK: '✏️', DRAG_AND_DROP: '🖱️',
+    SINGLE_CHOICE: FaCircleDot,
+    MULTIPLE_CHOICE: FaSquareCheck,
+    TRUE_FALSE: FaCircleCheck,
+    COLOR_MATCH: FaPalette,
+    WORD_ORDER: FaFont,
+    MATCHING: FaLink,
+    FILL_IN_BLANK: FaPencil,
+    DRAG_AND_DROP: FaHandPointer,
 };
 
 // Shuffle array helper
@@ -60,7 +70,7 @@ function MatchingQuestion({ question, answer, setAnswer }) {
     return (
         <div>
             <p className="text-xs font-bold text-blue-500 mb-4">
-                Tap a question on the left, then its matching answer on the right 🔗
+                Tap a question on the left, then its matching answer on the right <FaLink className="inline w-3 h-3" />
             </p>
             <div className="grid grid-cols-2 gap-3">
                 {/* Left column */}
@@ -82,12 +92,12 @@ function MatchingQuestion({ question, answer, setAnswer }) {
                                     {p.qText}
                                     {matched && (
                                         <span className="block text-[10px] font-bold text-green-600 mt-0.5">
-                                            → {matchedText}
+                                            <FaArrowRight className="inline w-3 h-3 mr-1" /> {matchedText}
                                         </span>
                                     )}
                                 </button>
                                 {isActive && (
-                                    <span className="absolute -right-2 top-1/2 -translate-y-1/2 text-kidPrimary font-black text-lg">→</span>
+                                    <FaArrowRight className="absolute -right-2 top-1/2 -translate-y-1/2 text-kidPrimary w-4 h-4" />
                                 )}
                             </div>
                         );
@@ -118,8 +128,8 @@ function MatchingQuestion({ question, answer, setAnswer }) {
             </div>
 
             {Object.keys(selections).length === pairs.length && (
-                <div className="mt-4 text-center text-xs font-bold text-green-600 bg-green-50 py-2 rounded-2xl">
-                    ✅ All matched! Tap any left item to unlink.
+                <div className="mt-4 text-center text-xs font-bold text-green-600 bg-green-50 py-2 rounded-2xl flex items-center justify-center gap-1.5">
+                    <FaCircleCheck className="w-3.5 h-3.5" /> All matched! Tap any left item to unlink.
                 </div>
             )}
         </div>
@@ -159,7 +169,7 @@ function WordOrderQuestion({ question, answer, setAnswer }) {
 
     return (
         <div>
-            <p className="text-xs font-bold text-orange-500 mb-3">🔤 Tap letters to spell the correct word</p>
+            <p className="text-xs font-bold text-orange-500 mb-3 flex items-center gap-1.5"><FaFont className="w-3.5 h-3.5" /> Tap letters to spell the correct word</p>
 
             {/* Answer tray */}
             <div className="mb-4 min-h-[52px] bg-blue-50 border-2 border-dashed border-blue-200 rounded-2xl p-3 flex flex-wrap gap-2 items-center">
@@ -220,12 +230,12 @@ function ColorMatchQuestion({ question, answers, onSelect }) {
                         {hasImg ? (
                             <img src={opt.imageUrl} alt="" className="w-full h-20 object-cover rounded-xl" />
                         ) : (
-                            <span className="text-4xl">🎨</span>
+                            <FaPalette className="text-4xl text-orange-400" />
                         )}
                         <span className={`font-bold text-sm ${isSel ? 'text-kidPrimary' : 'text-gray-700'}`}>
                             {opt.text}
                         </span>
-                        {isSel && <span className="text-kidPrimary font-black text-xs">✓ Selected</span>}
+                        {isSel && <span className="text-kidPrimary font-black text-xs flex items-center gap-1"><FaCheck className="w-3 h-3" /> Selected</span>}
                     </button>
                 );
             })}
@@ -347,7 +357,7 @@ export default function PracticeSession() {
 
     if (error || !quiz) return (
         <div className="min-h-screen bg-[#E7F6FF] flex flex-col items-center justify-center p-8 text-center">
-            <span className="text-5xl block mb-4">📭</span>
+            <FaInbox className="text-5xl text-gray-400 mx-auto mb-4" />
             <p className="font-bold text-gray-500">{error || 'Quiz not found'}</p>
             <button onClick={() => navigate(-1)} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">GO BACK</button>
         </div>
@@ -355,7 +365,7 @@ export default function PracticeSession() {
 
     if (questions.length === 0) return (
         <div className="min-h-screen bg-[#E7F6FF] flex flex-col items-center justify-center p-8 text-center">
-            <span className="text-5xl block mb-4">❓</span>
+            <FaCircleQuestion className="text-5xl text-gray-400 mx-auto mb-4" />
             <p className="font-bold text-gray-500">This quiz has no questions yet.</p>
             <button onClick={() => navigate(-1)} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">GO BACK</button>
         </div>
@@ -394,7 +404,7 @@ export default function PracticeSession() {
                 const val = a?.textResponse || '';
                 return (
                     <div>
-                        <p className="text-xs font-bold text-orange-500 mb-3">✏️ Type the missing word</p>
+                        <p className="text-xs font-bold text-orange-500 mb-3 flex items-center gap-1.5"><FaPencil className="w-3.5 h-3.5" /> Type the missing word</p>
                         <input
                             value={val}
                             onChange={e => setAnswer(question.id, { textResponse: e.target.value })}
@@ -418,14 +428,14 @@ export default function PracticeSession() {
                 const selected = a?.selectedOptionIds || [];
                 return (
                     <div className="space-y-3">
-                        <p className="text-xs font-bold text-orange-500 mb-3">Select ALL correct answers ☑️</p>
+                        <p className="text-xs font-bold text-orange-500 mb-3 flex items-center gap-1.5"><FaSquareCheck className="w-3.5 h-3.5" /> Select ALL correct answers</p>
                         {question.options.map(opt => {
                             const isSel = selected.includes(opt.id);
                             return (
                                 <button key={opt.id} onClick={() => handleSelectOption(question, opt.id)}
                                     className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
                                     <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 ${isSel ? 'bg-kidPrimary border-kidPrimary text-white' : 'border-gray-300'}`}>
-                                        {isSel && '✓'}
+                                        {isSel && <FaCheck className="w-3.5 h-3.5" />}
                                     </span>
                                     <span className="font-bold text-kidText">{opt.text}</span>
                                 </button>
@@ -443,7 +453,7 @@ export default function PracticeSession() {
                             return (
                                 <button key={opt.id} onClick={() => handleSelectOption(question, opt.id)}
                                     className={`w-full flex items-center justify-center gap-2 p-5 rounded-2xl border-2 font-bold text-xl transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50 text-kidPrimary' : 'border-gray-200 bg-white text-kidText hover:border-gray-300'}`}>
-                                    {opt.text === 'True' ? '✅' : '❌'} {opt.text}
+                                    {opt.text === 'True' ? <FaCircleCheck className="w-5 h-5" /> : <FaCircleXmark className="w-5 h-5" />} {opt.text}
                                 </button>
                             );
                         })}
@@ -461,7 +471,7 @@ export default function PracticeSession() {
                                 <button key={opt.id} onClick={() => handleSelectOption(question, opt.id)}
                                     className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
                                     <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${isSel ? 'bg-kidPrimary border-kidPrimary text-white' : 'border-gray-300'}`}>
-                                        {isSel && '✓'}
+                                        {isSel && <FaCheck className="w-3.5 h-3.5" />}
                                     </span>
                                     {hasImg && <img src={opt.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />}
                                     <span className="font-bold text-kidText">{opt.text}</span>
@@ -479,7 +489,7 @@ export default function PracticeSession() {
             <div className="flex justify-between items-center mb-6">
                 <button onClick={() => navigate(-1)}
                     className="bg-white p-2.5 rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition">
-                    <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+                    <FaChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <div className="flex flex-col items-center">
                     <h2 className="text-kidOrange font-bold text-xs tracking-widest uppercase">Practice Mode</h2>
@@ -503,7 +513,7 @@ export default function PracticeSession() {
             {/* Question card */}
             <div className="bg-white rounded-[28px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-gray-100">
                 <div className="flex items-center gap-2 mb-4">
-                    <span className="text-2xl">{TYPE_ICONS[q.type] || '🔘'}</span>
+                    {(() => { const Icon = TYPE_ICONS[q.type] || FaCircleDot; return <Icon className="text-2xl text-kidOrange" />; })()}
                     <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-100 px-2 py-0.5 rounded-full">
                         {q.type.replace(/_/g, ' ')}
                     </span>
@@ -514,7 +524,7 @@ export default function PracticeSession() {
                         {q.resourceUrl.includes('.mp3') || q.resourceUrl.includes('.wav') ? (
                             <button onClick={() => new Audio(q.resourceUrl).play()}
                                 className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg shadow-blue-300/40">
-                                <SpeakerWaveIcon className="w-8 h-8 text-white" />
+                                <FaVolumeHigh className="w-8 h-8 text-white" />
                             </button>
                         ) : (
                             <img src={q.resourceUrl} alt="Question" className="w-full max-h-48 object-cover rounded-2xl" />
@@ -532,18 +542,18 @@ export default function PracticeSession() {
                     {current > 0 && (
                         <button onClick={() => setCurrent(current - 1)}
                             className="flex-1 kid-btn border-4 border-kidPrimary bg-white text-kidPrimary shadow-[0_6px_0_0_#2563eb] hover:bg-gray-50">
-                            <ChevronLeftIcon className="w-5 h-5" /> PREVIOUS
+                            <FaChevronLeft className="w-5 h-5" /> PREVIOUS
                         </button>
                     )}
                     {!isLast ? (
                         <button onClick={() => setCurrent(current + 1)}
                             className="flex-1 kid-btn bg-kidPrimary shadow-[0_6px_0_0_#2563eb]">
-                            NEXT <ChevronRightIcon className="w-5 h-5" />
+                            NEXT <FaChevronRight className="w-5 h-5" />
                         </button>
                     ) : (
                         <button onClick={handleSubmit} disabled={submitting}
                             className="flex-1 kid-btn bg-[#f26c24] shadow-[0_6px_0_0_#c2410c] disabled:opacity-50">
-                            <CheckCircleIcon className="w-5 h-5" />
+                            <FaCircleCheck className="w-5 h-5" />
                             {submitting ? 'SUBMITTING...' : 'FINISH'}
                         </button>
                     )}

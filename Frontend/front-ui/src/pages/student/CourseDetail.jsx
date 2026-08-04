@@ -1,24 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, PlayCircleIcon, LockClosedIcon, CheckCircleIcon, TrophyIcon } from '@heroicons/react/24/solid';
+import {
+    FaChevronLeft, FaCirclePlay, FaLock, FaCircleCheck, FaStar,
+    FaPen, FaHashtag, FaLeaf, FaPalette, FaInbox,
+} from 'react-icons/fa6';
 import api from '../../services/api';
 
-// Colors for chapters/topics cycling
 const chapterStyles = [
-    { iconBg: 'bg-blue-100', iconColor: 'text-blue-600', accentBar: 'bg-blue-500', borderColor: 'border-blue-200', icon: '📝' },
-    { iconBg: 'bg-orange-100', iconColor: 'text-orange-600', accentBar: 'bg-orange-500', borderColor: 'border-orange-200', icon: '🔢' },
-    { iconBg: 'bg-green-100', iconColor: 'text-green-600', accentBar: 'bg-green-500', borderColor: 'border-green-200', icon: '🌿' },
-    { iconBg: 'bg-purple-100', iconColor: 'text-purple-600', accentBar: 'bg-purple-500', borderColor: 'border-purple-200', icon: '🎨' },
+    { iconBg: 'bg-blue-100', iconColor: 'text-blue-600', accent: 'bg-blue-500', Icon: FaPen },
+    { iconBg: 'bg-orange-100', iconColor: 'text-orange-600', accent: 'bg-orange-500', Icon: FaHashtag },
+    { iconBg: 'bg-green-100', iconColor: 'text-green-600', accent: 'bg-blue-500', Icon: FaLeaf },
+    { iconBg: 'bg-[#eee0d4]', iconColor: 'text-[#9a5a2b]', accent: 'bg-[#ec9c66]', Icon: FaPalette },
 ];
 
-const lessonStatusIcon = (lesson) => {
+const lessonStatus = (lesson) => {
     if (lesson.locked) {
-        return { icon: <LockClosedIcon className="w-5 h-5 text-gray-400" />, label: 'Locked', labelColor: 'text-gray-400' };
+        return { badge: 'Locked', badgeClass: 'text-gray-500', icon: <FaLock className="w-5 h-5 text-gray-400" /> };
     }
     if (lesson.completed) {
-        return { icon: <CheckCircleIcon className="w-6 h-6 text-green-500" />, label: 'Completed', labelColor: 'text-green-500' };
+        return { badge: 'Completed', badgeClass: 'text-green-600', icon: <FaCircleCheck className="w-5 h-5 text-green-500" /> };
     }
-    return { icon: <span className="text-yellow-400 text-lg">⭐</span>, label: 'In Progress', labelColor: 'text-orange-500' };
+    return { badge: 'In Progress', badgeClass: 'text-orange-500', icon: <FaStar className="w-5 h-5 text-orange-500" /> };
 };
 
 export default function CourseDetail() {
@@ -36,17 +38,17 @@ export default function CourseDetail() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="w-12 h-12 border-4 border-kidOrange border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex min-h-[60vh] items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-kidOrange border-t-transparent"></div>
             </div>
         );
     }
 
     if (!course) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-blue-100 via-white to-orange-100 flex items-center justify-center p-8 text-center">
+            <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-100 via-white to-orange-100 p-8 text-center">
                 <div>
-                    <span className="text-5xl block mb-4">📭</span>
+                    <FaInbox className="mb-4 mx-auto text-5xl text-gray-400" />
                     <p className="font-bold text-gray-500">Course not found.</p>
                 </div>
             </div>
@@ -54,171 +56,146 @@ export default function CourseDetail() {
     }
 
     const chapters = (course.chapters || []).sort((a, b) => a.order - b.order);
+    const totalLessons = chapters.flatMap(ch => ch.topics || []).reduce((sum, topic) => sum + (topic.lessons || []).length, 0);
+    const completedLessons = chapters.flatMap(ch => ch.topics || []).reduce((sum, topic) => sum + (topic.lessons || []).filter(lesson => lesson.completed).length, 0);
+    const progress = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
     return (
-        <div className="bg-gradient-to-b from-blue-100 via-white to-orange-50 min-h-screen pb-32">
+        <div className="min-h-screen bg-[#f6f3ee] pb-28">
+            <div className="mx-auto max-w-md">
+                <div className="rounded-b-[36px] bg-[#7eb1f3] px-4 pb-10 pt-12 text-center text-white shadow-[0_10px_24px_rgba(3,85,160,0.25)]">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="absolute left-4 top-6 rounded-full bg-white/20 p-2.5 text-white backdrop-blur transition hover:bg-white/30"
+                    >
+                        <FaChevronLeft className="h-5 w-5" />
+                    </button>
 
-            {/* Hero Header — blue card matching Image 2 right panel */}
-            <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-b-[40px] px-6 pt-14 pb-20 relative text-center shadow-xl">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="absolute top-6 left-4 bg-white/20 p-2.5 rounded-full text-white hover:bg-white/30 backdrop-blur transition"
-                >
-                    <ChevronLeftIcon className="w-5 h-5" />
-                </button>
-                <p className="text-white/80 font-bold tracking-widest text-[11px] mb-2 uppercase">Kuta Learning</p>
-                <h1 className="text-[32px] font-black text-white mb-3 leading-tight">{course.title}</h1>
-                {course.description && (
-                    <p className="text-white/90 text-[14px] font-medium mb-4 leading-relaxed">
-                        {course.description}
-                    </p>
-                )}
-                <div className="flex gap-3 justify-center flex-wrap mt-2">
-                    <span className="bg-white/20 text-white text-[12px] font-bold px-3 py-1 rounded-full border border-white/30">
-                        Grade {course.gradeLevel}
-                    </span>
-                    <span className="bg-white/20 text-white text-[12px] font-bold px-3 py-1 rounded-full border border-white/30">
-                        {chapters.length} Chapters
-                    </span>
+                    <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.24em] text-white/80">Kuta Learning</p>
+                    <h1 className="text-[32px] font-black leading-tight">{course.title}</h1>
+                    {course.description && (
+                        <p className="mx-auto mt-3 max-w-[280px] text-[14px] font-medium leading-relaxed text-white/90">{course.description}</p>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[12px] font-bold">Grade {course.gradeLevel}</span>
+                        <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[12px] font-bold">{chapters.length} Modules</span>
+                    </div>
+
+                    {course.coverImage && (
+                        <div className="mt-5 flex justify-center">
+                            <img src={course.coverImage} alt={course.title} className="h-28 w-28 rounded-[22px] object-cover shadow-xl ring-4 ring-white/30" />
+                        </div>
+                    )}
                 </div>
-                {course.coverImage && (
-                    <div className="mt-5">
-                        <img
-                            src={course.coverImage}
-                            alt="Course"
-                            className="w-32 h-32 object-cover rounded-2xl mx-auto shadow-xl border-4 border-white/30"
-                        />
-                    </div>
-                )}
-            </div>
 
-            {/* Chapter list, each expands to show topics → lessons */}
-            <div className="px-5 -mt-8 relative z-10 space-y-5">
-                {chapters.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-8 shadow-md text-center border border-gray-100">
-                        <span className="text-4xl block mb-3">📭</span>
-                        <p className="font-bold text-gray-400">No chapters yet. Check back soon!</p>
-                    </div>
-                ) : (
-                    chapters.map((chapter, chIdx) => {
-                        const style = chapterStyles[chIdx % chapterStyles.length];
-                        const topics = (chapter.topics || []).sort((a, b) => a.order - b.order);
+                <div className="-mt-6 space-y-4 px-4">
+                    {chapters.length === 0 ? (
+                        <div className="rounded-[28px] bg-white p-6 text-center shadow-[0_6px_18px_rgba(0,0,0,0.04)]">
+                            <FaInbox className="mb-3 mx-auto text-4xl text-gray-400" />
+                            <p className="font-bold text-gray-400">No modules yet. Check back soon!</p>
+                        </div>
+                    ) : (
+                        chapters.map((chapter, chIdx) => {
+                            const style = chapterStyles[chIdx % chapterStyles.length];
+                            const topics = (chapter.topics || []).sort((a, b) => a.order - b.order);
+                            const chapterLessons = topics.reduce((sum, topic) => sum + (topic.lessons || []).length, 0);
+                            const chapterCompleted = topics.reduce((sum, topic) => sum + (topic.lessons || []).filter(lesson => lesson.completed).length, 0);
+                            const chapterProgress = chapterLessons ? Math.round((chapterCompleted / chapterLessons) * 100) : 0;
 
-                        return (
-                            <div key={chapter.id} className="bg-white rounded-[28px] shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden">
-                                {/* Chapter Header */}
-                                <div className={`flex items-center gap-4 p-5 border-b border-gray-50`}>
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${style.iconBg} shadow-sm`}>
-                                        {chapter.coverImage ? (
-                                            <img src={chapter.coverImage} alt="" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className={`text-3xl ${style.iconColor}`}>{style.icon}</span>
-                                        )}
+                            return (
+                                <div key={chapter.id} className="rounded-[30px] bg-white p-4 shadow-[0_6px_18px_rgba(0,0,0,0.04)]">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`flex h-14 w-14 items-center justify-center rounded-full ${style.iconBg} shadow-sm`}>
+                                            {chapter.coverImage ? (
+                                                <img src={chapter.coverImage} alt={chapter.title} className="h-full w-full rounded-full object-cover" />
+                                            ) : (
+                                                <style.Icon className={`text-3xl ${style.iconColor}`} />
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-gray-500">Module {chIdx + 1}</p>
+                                            <h3 className="truncate text-[18px] font-extrabold text-[#222222]">{chapter.title}</h3>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <div className="text-[11px] font-bold text-gray-500">{chapterProgress}%</div>
+                                            <div className={`mt-1 h-1.5 w-16 rounded-full ${style.iconBg}`}>
+                                                <div className={`h-1.5 rounded-full ${style.accent}`} style={{ width: `${chapterProgress}%` }} />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${style.iconColor}`}>Chapter {chIdx + 1}</span>
-                                        <h3 className="font-extrabold text-gray-900 text-[18px] truncate leading-tight">{chapter.title}</h3>
-                                        {chapter.description && (
-                                            <p className="text-[12px] text-gray-500 font-medium line-clamp-2 mt-0.5">{chapter.description}</p>
-                                        )}
-                                    </div>
-                                </div>
 
-                                {/* Topics + Lessons */}
-                                {topics.length > 0 && (
-                                    <div className="divide-y divide-gray-50">
-                                        {topics.map((topic) => {
-                                            const lessons = (topic.lessons || []).sort((a, b) => a.order - b.order);
-                                            return (
-                                                <div key={topic.id}>
-                                                    {/* Topic title row */}
-                                                    <div className="flex items-center gap-2 px-5 py-3 bg-gray-50/60">
-                                                        {topic.coverImage ? (
-                                                            <img src={topic.coverImage} className="w-7 h-7 rounded-lg object-cover" alt="" />
-                                                        ) : (
-                                                            <span className="text-base">📌</span>
-                                                        )}
-                                                        <p className="text-[13px] font-bold text-gray-700">{topic.title}</p>
-                                                    </div>
-                                                    {/* Lessons */}
-                                                    {lessons.map((lesson) => {
-                                                        const status = lessonStatusIcon(lesson);
-                                                        return (
-                                                            <div
-                                                                key={lesson.id}
-                                                                onClick={() => {
-                                                                    if (lesson.locked) return;
-                                                                    navigate(`/student/lessons/${lesson.id}`);
-                                                                }}
-                                                                className={`flex items-center gap-4 px-5 py-4 ${lesson.locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-orange-50/40 transition active:scale-[0.98]'}`}
-                                                            >
-                                                                {/* Lesson icon */}
-                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${style.iconBg}`}>
-                                                                    {lesson.coverImage ? (
-                                                                        <img src={lesson.coverImage} className="w-full h-full object-cover rounded-2xl" alt="" />
-                                                                    ) : (
-                                                                        <PlayCircleIcon className={`w-7 h-7 ${style.iconColor}`} />
-                                                                    )}
+                                    {topics.length > 0 && (
+                                        <div className="mt-4 space-y-3">
+                                            {topics.map((topic) => {
+                                                const lessons = (topic.lessons || []).sort((a, b) => a.order - b.order);
+                                                const topicCompleted = lessons.filter(lesson => lesson.completed).length;
+                                                const topicProgress = lessons.length ? Math.round((topicCompleted / lessons.length) * 100) : 0;
+                                                const firstLesson = lessons[0];
+                                                const quiz = (topic.quizzes || topic.quiz || [])[0];
+
+                                                return (
+                                                    <button
+                                                        key={topic.id}
+                                                        type="button"
+                                                        onClick={() => firstLesson && !firstLesson.locked && navigate(`/student/lessons/${firstLesson.id}`)}
+                                                        className="w-full rounded-[24px] bg-[#f8f7f4] p-3 text-left shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)] transition active:scale-[0.98]"
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            <div className={`flex h-14 w-14 items-center justify-center rounded-full ${style.iconBg}`}>
+                                                                {topic.coverImage ? (
+                                                                    <img src={topic.coverImage} alt={topic.title} className="h-full w-full rounded-full object-cover" />
+                                                                ) : (
+                                                                    <style.Icon className={`text-3xl ${style.iconColor}`} />
+                                                                )}
+                                                            </div>
+
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <h4 className="truncate text-[17px] font-extrabold text-[#222222]">{topic.title}</h4>
+                                                                        {topic.description && (
+                                                                            <p className="mt-1 text-[12px] text-gray-500">{topic.description}</p>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500">
+                                                                        <span>{topicProgress}%</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <h4 className="font-bold text-gray-800 text-[15px] truncate">{lesson.title}</h4>
-                                                                    {lesson.description && (
-                                                                        <p className="text-[11px] text-gray-500 font-medium line-clamp-1">{lesson.description}</p>
-                                                                    )}
-                                                                </div>
-                                                                {/* Status */}
-                                                                <div className={`flex flex-col items-center text-[10px] font-bold ${status.labelColor} shrink-0`}>
-                                                                    {status.icon}
-                                                                    <span className="mt-0.5">{status.label}</span>
+
+                                                                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#d9dee5]">
+                                                                    <div className={`h-full rounded-full ${style.accent}`} style={{ width: `${topicProgress}%` }} />
                                                                 </div>
                                                             </div>
-                                                        );
-                                                    })}
+                                                        </div>
 
-                                                    {/* Quiz entry per topic */}
-                                                    {(topic.quizzes || topic.quiz || []).length > 0 && (() => {
-                                                        const quiz = (topic.quizzes || topic.quiz || [])[0];
-                                                        const isCompleted = !!quiz.completed;
-                                                        return (
-                                                            <button
-                                                                onClick={() => topic.quizAvailable && navigate(`/student/quiz/${quiz.id}`)}
-                                                                disabled={!topic.quizAvailable}
-                                                                className={`w-full flex items-center gap-3 px-5 py-4 transition ${isCompleted ? 'bg-green-50/20 hover:bg-green-50/40' : topic.quizAvailable ? 'cursor-pointer hover:bg-yellow-50/70' : 'cursor-not-allowed opacity-60 bg-gray-50/60'}`}
-                                                            >
-                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${isCompleted ? 'bg-green-100' : topic.quizAvailable ? 'bg-yellow-100' : 'bg-gray-100'}`}>
-                                                                    <TrophyIcon className={`w-7 h-7 ${isCompleted ? 'text-green-500' : topic.quizAvailable ? 'text-yellow-500' : 'text-gray-400'}`} />
-                                                                </div>
-                                                                <div className="flex-1 min-w-0 text-left">
-                                                                    <h4 className="font-bold text-gray-800 text-[15px] truncate">{quiz.title}</h4>
-                                                                    <p className="text-[11px] font-medium">
-                                                                        {isCompleted ? (
-                                                                            <span className="text-green-600 font-extrabold">🎉 E-Certificate Unlocked / Passed!</span>
-                                                                        ) : topic.quizAvailable ? (
-                                                                            <span className="text-gray-500">Passing score: {quiz.passingScore}%</span>
-                                                                        ) : (
-                                                                            <span className="text-gray-400">Complete all lessons to unlock</span>
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-                                                                <span className={`text-[10px] font-bold shrink-0 ${isCompleted ? 'text-green-600' : topic.quizAvailable ? 'text-yellow-600' : 'text-gray-400'}`}>
-                                                                    {isCompleted ? 'PASSED ✅' : topic.quizAvailable ? 'START ▶' : '🔒'}
-                                                                </span>
-                                                            </button>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                                        <div className="mt-3 flex items-center justify-between gap-3 rounded-[18px] bg-white px-3 py-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <FaCirclePlay className="h-5 w-5 text-blue-500" />
+                                                                <span className="text-[12px] font-bold text-gray-700">{lessons.length} Lessons</span>
+                                                            </div>
 
-                                {topics.length === 0 && (
-                                    <div className="px-5 py-4 text-center text-gray-400 font-medium text-sm">No topics yet in this chapter.</div>
-                                )}
-                            </div>
-                        );
-                    })
-                )}
+                                                            <div className="flex items-center gap-2 text-[11px] font-bold">
+                                                                {quiz ? (
+                                                                    <span className="rounded-full bg-yellow-100 px-2 py-1 text-yellow-700">Quiz</span>
+                                                                ) : (
+                                                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">Practice</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
             </div>
         </div>
     );

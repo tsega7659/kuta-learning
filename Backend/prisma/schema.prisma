@@ -148,6 +148,7 @@ model Question {
   type        QuestionType     @default(SINGLE_CHOICE)
   text        String
   resourceUrl String?          // For image-based questions
+  explanation String?
   order       Int
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -182,16 +183,19 @@ model LessonProgress {
 }
 
 model QuizAttempt {
-  id        String       @id @default(uuid())
-  studentId String
-  student   User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  quizId    String
-  quiz      Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  score     Int
-  maxScore  Int
-  passed    Boolean
-  createdAt DateTime     @default(now())
-  answers   QuizAnswer[]
+  id             String        @id @default(uuid())
+  studentId      String
+  student        User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  quizId         String
+  quiz           Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  score          Int
+  maxScore       Int
+  correctAnswers Int           @default(0)
+  passed         Boolean
+  startedAt      DateTime?     @default(now())
+  submittedAt    DateTime?     @default(now())
+  createdAt      DateTime      @default(now())
+  answers        QuizAnswer[]
 }
 
 model QuizAnswer {

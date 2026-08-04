@@ -1,13 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { HomeIcon, BookOpenIcon, PencilSquareIcon, PuzzlePieceIcon, UserIcon } from '@heroicons/react/24/outline';
-import { HomeIcon as HomeSolid, BookOpenIcon as BookSolid, PencilSquareIcon as PencilSolid, PuzzlePieceIcon as PuzzleSolid, UserIcon as UserSolid } from '@heroicons/react/24/solid';
+import { FaHouse, FaBookOpen, FaPenToSquare, FaUser } from 'react-icons/fa6';
 
 export default function BottomNav() {
     const navItems = [
-        { name: 'Home', path: '/student/home', Outline: HomeIcon, Solid: HomeSolid },
-        { name: 'Learn', path: '/student/courses', Outline: BookOpenIcon, Solid: BookSolid },
-        { name: 'Practice', path: '/student/practice', Outline: PencilSquareIcon, Solid: PencilSolid },
-        { name: 'Profile', path: '/student/profile', Outline: UserIcon, Solid: UserSolid },
+        { name: 'Home', path: '/student/home', Icon: FaHouse },
+        { name: 'Learn', path: '/student/courses', Icon: FaBookOpen },
+        { name: 'Practice', path: '/student/practice', Icon: FaPenToSquare },
+        { name: 'Profile', path: '/student/profile', Icon: FaUser },
     ];
 
     return (
@@ -27,7 +26,7 @@ export default function BottomNav() {
                                 <div className={`relative px-4 py-1.5 rounded-full flex flex-col items-center justify-center transition-all ${isActive ? 'text-white' : ''}`}>
                                     {isActive && <div className="absolute inset-0 bg-[#f88125] rounded-[18px]"></div>}
                                     <div className="relative z-10 flex flex-col items-center">
-                                        {isActive ? <item.Outline className="w-[22px] h-[22px] mb-1" /> : <item.Outline className="w-[22px] h-[22px] mb-1 text-gray-500" />}
+                                        <item.Icon className={`w-[22px] h-[22px] mb-1 ${isActive ? 'text-white' : 'text-gray-500'}`} />
                                         <span className={`text-[10px] font-bold tracking-wide ${isActive ? 'text-white' : 'text-gray-500'}`}>{item.name}</span>
                                     </div>
                                 </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightOnRectangleIcon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { FaRightFromBracket, FaGear, FaXmark, FaUser, FaCheck } from 'react-icons/fa6';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -22,10 +22,10 @@ export default function HomeProfile() {
 
                 <div className="flex gap-2">
                     <button onClick={() => setShowGate(true)} title="Parent Settings" className="bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
-                        <Cog6ToothIcon className="w-5 h-5" />
+                        <FaGear className="w-5 h-5" />
                     </button>
                     <button onClick={handleLogout} title="Logout" className="bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
-                        <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                        <FaRightFromBracket className="w-5 h-5" />
                     </button>
                 </div>
             </div>
@@ -34,7 +34,7 @@ export default function HomeProfile() {
                 <div className="bg-white rounded-[32px] p-6 shadow-soft border border-gray-100 flex items-center justify-center min-h-[300px]">
                     <div className="text-center">
                         <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden border-4 border-white shadow-xl">
-                            <span className="text-5xl">👤</span>
+                            <FaUser className="text-5xl text-blue-500" />
                         </div>
                         <h1 className="text-3xl font-extrabold text-kidText mb-1 tracking-tight">{user?.name || 'Explorer'}</h1>
                         <p className="text-gray-400 font-bold mb-4">{user?.email}</p>
@@ -104,7 +104,7 @@ function ParentGateModal({ onClose }) {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden animate-spring-up shadow-2xl relative">
                 <button onClick={onClose} className="absolute top-4 right-4 bg-gray-100 p-2 rounded-full text-gray-500 hover:bg-gray-200">
-                    <XMarkIcon className="w-5 h-5" />
+                    <FaXmark className="w-5 h-5" />
                 </button>
 
                 <div className="p-6 pt-10 text-center">
@@ -128,7 +128,7 @@ function ParentGateModal({ onClose }) {
                                             className={`w-full p-4 rounded-xl border-2 text-left font-bold transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50 text-kidPrimary items-center flex gap-3' : 'border-gray-200 bg-white text-gray-600'
                                                 }`}
                                         >
-                                            {isSel && <span className="w-5 h-5 bg-kidPrimary text-white flex items-center justify-center rounded shrink-0">✓</span>}
+                                            {isSel && <span className="w-5 h-5 bg-kidPrimary text-white flex items-center justify-center rounded shrink-0"><FaCheck className="w-3 h-3" /></span>}
                                             {opt.text}
                                         </button>
                                     );

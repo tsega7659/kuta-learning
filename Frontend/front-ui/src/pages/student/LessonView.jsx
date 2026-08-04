@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, CheckCircleIcon, SpeakerWaveIcon, PlayCircleIcon } from '@heroicons/react/24/solid';
+import {
+    FaChevronLeft, FaCircleCheck, FaVolumeHigh, FaCirclePlay,
+    FaFaceSmileBeam, FaFileLines, FaWandMagicSparkles,
+} from 'react-icons/fa6';
 import api from '../../services/api';
 
 export default function LessonView() {
@@ -106,7 +109,7 @@ export default function LessonView() {
                     onClick={() => navigate(-1)}
                     className="bg-white/80 p-2.5 rounded-full shadow-sm border border-gray-100 hover:bg-white transition"
                 >
-                    <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+                    <FaChevronLeft className="w-5 h-5 text-gray-600" />
                 </button>
                 <span className="text-[#a54c15] font-black text-[13px] tracking-widest uppercase">Kuta Learning</span>
                 <div className="w-10" />
@@ -135,7 +138,7 @@ export default function LessonView() {
             <div className="px-5 space-y-5 mb-10">
                 {contents.length === 0 && (
                     <div className="text-center p-10 bg-white/70 rounded-3xl border border-gray-100">
-                        <span className="text-4xl block mb-2">🎈</span>
+                        <FaFaceSmileBeam className="text-4xl text-orange-400 mx-auto mb-2" />
                         <p className="text-gray-400 font-bold">Lesson content coming soon!</p>
                     </div>
                 )}
@@ -162,7 +165,7 @@ export default function LessonView() {
                     if (item.type === 'VIDEO') return (
                         <div key={item.id} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-[28px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-blue-100">
                             <div className="flex items-center gap-2 mb-3 px-1">
-                                <PlayCircleIcon className="w-5 h-5 text-blue-600" />
+                                <FaCirclePlay className="w-5 h-5 text-blue-600" />
                                 <h3 className="font-extrabold text-blue-800 text-[15px]">{item.description || 'Watch & Learn'}</h3>
                             </div>
                             <div className="w-full aspect-video bg-black rounded-[18px] overflow-hidden shadow-md">
@@ -179,7 +182,7 @@ export default function LessonView() {
                                     onClick={() => handleAudioToggle(item.content)}
                                     className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-blue-300/40"
                                 >
-                                    <SpeakerWaveIcon className="w-8 h-8 text-white" />
+                                    <FaVolumeHigh className="w-8 h-8 text-white" />
                                 </button>
                                 <button
                                     onClick={() => handleAudioToggle(item.content)}
@@ -215,7 +218,7 @@ export default function LessonView() {
                         <div key={item.id} className="bg-white rounded-[28px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center">
-                                    <span className="text-2xl">📄</span>
+                                    <FaFileLines className="text-2xl text-orange-500" />
                                 </div>
                                 <span className="font-bold text-gray-800 text-[14px]">{item.description || 'Lesson Material'}</span>
                             </div>
@@ -242,8 +245,8 @@ export default function LessonView() {
                     </div>
                 ) : completed ? (
                     <div className="flex items-center justify-center gap-2 bg-green-50 text-green-600 font-bold py-4 rounded-full border-2 border-green-100">
-                        <CheckCircleIcon className="w-6 h-6" />
-                        <span>Lesson Completed! 🎉</span>
+                        <FaCircleCheck className="w-6 h-6" />
+                        <span>Lesson Completed!</span>
                     </div>
                 ) : (
                     <button
@@ -251,7 +254,7 @@ export default function LessonView() {
                         disabled={completing}
                         className="w-full bg-[#f26c24] text-white font-bold py-4 rounded-full hover:bg-[#e05b13] transition active:scale-95 shadow-lg shadow-orange-400/30 text-[16px] disabled:opacity-50"
                     >
-                        {completing ? 'Saving...' : '✅ Mark as Complete'}
+                        {completing ? 'Saving...' : 'Mark as Complete'}
                     </button>
                 )}
 
@@ -261,7 +264,7 @@ export default function LessonView() {
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-full hover:from-blue-600 hover:to-blue-700 transition active:scale-95 shadow-lg shadow-blue-400/30 text-[16px] flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                     <span>Take Quiz</span>
-                    <span className="text-xl">✨</span>
+                    <FaWandMagicSparkles className="text-xl" />
                 </button>
             </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SparklesIcon, CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { FaWandMagicSparkles, FaArrowsRotate, FaInbox } from 'react-icons/fa6';
 import api from '../../services/api';
 
 export default function PracticeMenu() {
@@ -40,18 +40,18 @@ export default function PracticeMenu() {
             <div className="px-5 mt-6 space-y-4">
                 {loading ? (
                     <div className="flex justify-center py-10">
-                        <ArrowPathIcon className="w-8 h-8 text-kidOrange animate-spin" />
+                        <FaArrowsRotate className="w-8 h-8 text-kidOrange animate-spin" />
                     </div>
                 ) : topics.length === 0 ? (
                     <div className="text-center p-8 bg-white rounded-[32px] border border-gray-100 shadow-soft">
-                        <span className="text-4xl mb-4 block">📭</span>
+                        <FaInbox className="text-4xl text-gray-400 mx-auto mb-4" />
                         <p className="font-bold text-gray-500">No practice questions available yet.</p>
                     </div>
                 ) : (
                     topics.map(t => (
                         <div key={t.id} className="bg-white rounded-[32px] p-5 shadow-soft border border-gray-100 flex items-center hover:scale-[1.02] transition-transform">
                             <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center shrink-0 mr-4">
-                                <SparklesIcon className="w-8 h-8 text-kidOrange" />
+                                <FaWandMagicSparkles className="w-8 h-8 text-kidOrange" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.courseTitle}</p>

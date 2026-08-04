@@ -2,15 +2,21 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
+const compression = require("compression");
+
 
 dotenv.config();
 
 const app = express();
+app.use(compression());
 
-// CORS – allow the Vite dev server (default 5173) to call the API
+const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
+    : ["http://localhost:5173", "http://localhost:5174","https://kuta-learning.vercel.app"];
+
 app.use(
     cors({
-        origin: ["http://localhost:5173", "http://localhost:5174"],
+        origin: allowedOrigins,
         credentials: true,
     })
 );

@@ -33,16 +33,14 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-blue-100 via-white to-orange-100 flex flex-col items-center justify-center p-4">
+        <div className="min-h-screen bg-[linear-gradient(180deg,#edf4ff_0%,#f9f6ee_100%)] flex items-center justify-center p-4 sm:p-6">
+            <div className="w-full max-w-[420px] rounded-[28px] bg-white/80 shadow-[0_20px_60px_rgba(36,78,138,0.12)] border border-white/70 p-5 sm:p-7 backdrop-blur-sm">
+                <div className="mb-6 text-center">
+                    <h1 className="text-[30px] font-black text-[#0f4c81] leading-tight">Create your account</h1>
+                    <p className="text-[15px] text-gray-600 font-medium mt-2">Personalized learning starts here</p>
+                </div>
 
-            <div className="w-full max-w-[400px]">
-                {/* Form Card */}
-                <div className="bg-[#F8F9FA] rounded-[32px] p-8 shadow-sm border border-gray-100/50">
-                    <div className="mb-6">
-                        <h1 className="text-[28px] font-bold text-blue-700 leading-tight mb-1">Kuta Learning</h1>
-                        <p className="text-gray-600 font-medium text-[15px]">Create your student account</p>
-                    </div>
-
+                <div className="rounded-[24px] bg-white/85 border border-gray-100 p-6 shadow-[0_10px_40px_rgba(36,78,138,0.08)]">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
                             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-2xl text-sm font-bold border border-red-100">
@@ -60,7 +58,7 @@ export default function Register() {
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50/50 rounded-2xl border-none focus:ring-2 focus:ring-kidOrange transition text-gray-800 font-medium"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 focus:border-[#f26c24] focus:outline-none transition text-gray-800 font-medium"
                                     placeholder="John Doe"
                                     required
                                 />
@@ -73,7 +71,7 @@ export default function Register() {
                                 <select
                                     value={gradeLevel}
                                     onChange={(e) => setGradeLevel(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-3.5 bg-gray-50/50 rounded-2xl border-none focus:ring-2 focus:ring-kidOrange transition text-gray-800 font-medium appearance-none"
+                                    className="w-full pl-4 pr-10 py-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 focus:border-[#f26c24] focus:outline-none transition text-gray-800 font-medium appearance-none"
                                     required
                                 >
                                     <option value="" disabled>Select your grade</option>
@@ -97,7 +95,7 @@ export default function Register() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50/50 rounded-2xl border-none focus:ring-2 focus:ring-kidOrange transition text-gray-800 font-medium"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 focus:border-[#f26c24] focus:outline-none transition text-gray-800 font-medium"
                                     placeholder="student@example.com"
                                     required
                                 />
@@ -114,7 +112,7 @@ export default function Register() {
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-12 pr-12 py-3.5 bg-gray-50/50 rounded-2xl border-none focus:ring-2 focus:ring-kidOrange transition text-gray-800 font-medium"
+                                    className="w-full pl-12 pr-12 py-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 focus:border-[#f26c24] focus:outline-none transition text-gray-800 font-medium"
                                     placeholder="••••••••"
                                     required
                                 />
@@ -132,7 +130,7 @@ export default function Register() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#f26c24] text-white font-bold py-4 rounded-full mt-2 hover:bg-[#e05b13] transition transform active:scale-95 disabled:opacity-50"
+                            className="w-full bg-[#f26c24] text-white font-extrabold py-4 rounded-full hover:bg-[#e05b13] transition transform active:scale-95 disabled:opacity-50 shadow-[0_10px_20px_rgba(242,108,36,0.3)]"
                         >
                             {loading ? 'Signing up...' : 'Sign Up →'}
                         </button>

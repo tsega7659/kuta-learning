@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { StarIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
+import {
+    FaStar, FaCircleCheck, FaCircleXmark, FaInbox, FaTrophy,
+    FaDumbbell, FaWandMagicSparkles, FaLightbulb, FaCheck,
+} from 'react-icons/fa6';
 import api from '../../services/api';
 
 function Stars({ ratio }) {
@@ -8,7 +11,7 @@ function Stars({ ratio }) {
     return (
         <div className="flex space-x-1">
             {[1, 2, 3, 4, 5].map(s => (
-                <StarIcon key={s} className={`w-8 h-8 ${s <= filled ? 'text-yellow-400' : 'text-gray-200'}`} />
+                <FaStar key={s} className={`w-8 h-8 ${s <= filled ? 'text-yellow-400' : 'text-gray-200'}`} />
             ))}
         </div>
     );
@@ -56,7 +59,7 @@ export default function QuizResult() {
     if (error || !attempt) {
         return (
             <div className="min-h-screen bg-[#FFFDF9] flex flex-col items-center justify-center p-8 text-center">
-                <span className="text-5xl block mb-4">📭</span>
+                <FaInbox className="text-5xl text-gray-400 mx-auto mb-4" />
                 <p className="font-bold text-gray-500">{error || 'No result found'}</p>
                 <button onClick={() => navigate('/student/practice')} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">
                     BACK TO SETS
@@ -77,8 +80,8 @@ export default function QuizResult() {
 
             {/* Trophy / Result */}
             <div className={`w-48 h-48 rounded-full border-8 border-white shadow-xl flex items-center justify-center mb-8 relative ${passed ? 'bg-yellow-100' : 'bg-orange-100'}`}>
-                <span className="text-8xl">{passed ? '🏆' : '💪'}</span>
-                <div className="absolute top-0 right-0 animate-spin-slow">✨</div>
+                {passed ? <FaTrophy className="text-8xl text-yellow-500" /> : <FaDumbbell className="text-8xl text-orange-500" />}
+                <div className="absolute top-0 right-0 animate-spin-slow"><FaWandMagicSparkles className="text-2xl text-yellow-400" /></div>
             </div>
 
             <h1 className="text-4xl font-extrabold text-kidText mb-2 text-center">
@@ -99,8 +102,8 @@ export default function QuizResult() {
                 <p className="text-sm font-bold text-gray-400 mt-2">{percentage}%</p>
 
                 {/* Pass/Fail badge */}
-                <span className={`mt-4 px-4 py-1.5 rounded-full font-bold text-sm ${passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
-                    {passed ? '✅ PASSED' : '❌ NOT PASSED'}
+                <span className={`mt-4 px-4 py-1.5 rounded-full font-bold text-sm flex items-center gap-1.5 ${passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
+                    {passed ? <><FaCircleCheck /> PASSED</> : <><FaCircleXmark /> NOT PASSED</>}
                 </span>
             </div>
 
@@ -134,13 +137,13 @@ export default function QuizResult() {
                             <div key={q.id} className={`bg-white rounded-3xl p-5 border shadow-sm ${wasCorrect ? 'border-green-100' : 'border-red-100'}`}>
                                 <div className="flex items-start gap-3">
                                     <div className={`mt-0.5 shrink-0 ${wasCorrect ? 'text-green-500' : 'text-red-400'}`}>
-                                        {wasCorrect ? <CheckCircleIcon className="w-6 h-6" /> : <XCircleIcon className="w-6 h-6" />}
+                                        {wasCorrect ? <FaCircleCheck className="w-6 h-6" /> : <FaCircleXmark className="w-6 h-6" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Question {idx + 1}</p>
                                         <p className="font-bold text-kidText text-sm mb-2">{q.text}</p>
                                         {wasCorrect ? (
-                                            <p className="text-xs font-bold text-green-600">✓ Correct!</p>
+                                            <p className="text-xs font-bold text-green-600 flex items-center gap-1"><FaCheck className="w-3 h-3" /> Correct!</p>
                                         ) : (
                                             <div className="space-y-1 text-xs font-medium">
                                                 {(() => {
@@ -174,10 +177,10 @@ export default function QuizResult() {
                                             </div>
                                         )}
                                         {q.explanation && !wasCorrect && (
-                                            <p className="text-xs text-gray-500 font-medium mt-2 italic">💡 {q.explanation}</p>
+                                            <p className="text-xs text-gray-500 font-medium mt-2 italic flex items-start gap-1"><FaLightbulb className="w-3 h-3 mt-0.5 shrink-0" /> {q.explanation}</p>
                                         )}
                                         {q.explanation && wasCorrect && (
-                                            <p className="text-xs text-gray-400 font-medium mt-2 italic">💡 {q.explanation}</p>
+                                            <p className="text-xs text-gray-400 font-medium mt-2 italic flex items-start gap-1"><FaLightbulb className="w-3 h-3 mt-0.5 shrink-0" /> {q.explanation}</p>
                                         )}
                                     </div>
                                 </div>
