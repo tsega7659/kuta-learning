@@ -55,10 +55,30 @@ router.get("/:id", authenticateToken, async (req, res) => {
             available: allLessonsCompleted
         }));
 
+        const topicLessons = await prisma.lesson.findMany({
+            where: { topicId: lesson.topicId },
+            orderBy: { order: "asc" },
+            select: { id: true, title: true, order: true }
+        });
+
+        const topicLessonsWithStatus = topicLessons.map((l, idx) => {
+            const prevCompleted = idx === 0 ? true : !!progressMap.get(topicLessons[idx - 1].id);
+            return {
+                ...l,
+                completed: !!progressMap.get(l.id),
+                locked: idx > 0 && !prevCompleted
+            };
+        });
+
+        const nextLessonInTopic = orderedLessons[currentIndex + 1];
+        const nextLessonId = completed && nextLessonInTopic ? nextLessonInTopic.id : null;
+
         res.json({
             ...lesson,
             completed,
             locked,
+            nextLessonId,
+            topicLessons: topicLessonsWithStatus,
             topic: {
                 ...lesson.topic,
                 quiz: quizList,

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     FaChevronLeft, FaCircleCheck, FaVolumeHigh, FaCirclePlay,
-    FaFaceSmileBeam, FaFileLines, FaWandMagicSparkles,
+    FaFaceSmileBeam, FaFileLines, FaWandMagicSparkles, FaLock, FaArrowRight,
 } from 'react-icons/fa6';
 import api from '../../services/api';
 
@@ -15,6 +15,8 @@ export default function LessonView() {
     const [completing, setCompleting] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [locked, setLocked] = useState(false);
+    const [nextLessonId, setNextLessonId] = useState(null);
+    const [topicLessons, setTopicLessons] = useState([]);
     const audioRef = useRef(null);
     const [audioState, setAudioState] = useState({ url: '', status: 'idle' });
 
@@ -26,6 +28,8 @@ export default function LessonView() {
                 setContents(res.data.contents || []);
                 setCompleted(!!res.data.completed);
                 setLocked(!!res.data.locked);
+                setNextLessonId(res.data.nextLessonId || null);
+                setTopicLessons(res.data.topicLessons || []);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -46,6 +50,11 @@ export default function LessonView() {
             await api.post(`/progress/lessons/${id}/complete`);
             setCompleted(true);
             setLocked(false);
+
+            const res = await api.get(`/lessons/${id}`);
+            setNextLessonId(res.data.nextLessonId || null);
+            setTopicLessons(res.data.topicLessons || []);
+            setLesson(res.data);
         } catch (err) {
             console.error(err);
             alert(err.response?.data?.message || 'Unable to mark the lesson complete.');
@@ -92,6 +101,9 @@ export default function LessonView() {
         audioRef.current.play();
     };
 
+    const quizAvailable = lesson?.topic?.quizAvailable;
+    const quizzes = lesson?.topic?.quizzes || lesson?.topic?.quiz || [];
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh] bg-gradient-to-b from-blue-100 via-white to-orange-100">
@@ -114,6 +126,40 @@ export default function LessonView() {
                 <span className="text-[#a54c15] font-black text-[13px] tracking-widest uppercase">Kuta Learning</span>
                 <div className="w-10" />
             </div>
+
+            {/* Topic lesson list */}
+            {topicLessons.length > 1 && (
+                <div className="px-5 mb-6">
+                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Lessons in this topic</p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                        {topicLessons.map((tl, idx) => {
+                            const isCurrent = tl.id === id;
+                            const isDone = tl.completed;
+                            const isLocked = tl.locked && !isCurrent;
+                            return (
+                                <button
+                                    key={tl.id}
+                                    type="button"
+                                    disabled={isLocked}
+                                    onClick={() => !isLocked && navigate(`/student/lessons/${tl.id}`)}
+                                    className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition ${
+                                        isCurrent
+                                            ? 'bg-[#f26c24] text-white shadow-md'
+                                            : isDone
+                                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                                : isLocked
+                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                    : 'bg-white text-gray-700 border border-gray-200'
+                                    }`}
+                                >
+                                    {isLocked ? <FaLock className="w-3 h-3" /> : isDone ? <FaCircleCheck className="w-3 h-3" /> : <span>{idx + 1}</span>}
+                                    <span className="max-w-[100px] truncate">{tl.title || `Lesson ${idx + 1}`}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Cover image (if exists) */}
             {lesson?.coverImage && (
@@ -241,6 +287,7 @@ export default function LessonView() {
             <div className="px-5 space-y-3">
                 {locked ? (
                     <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-600 font-bold py-4 rounded-full border-2 border-amber-100">
+                        <FaLock className="w-5 h-5" />
                         <span>Complete the previous lesson first.</span>
                     </div>
                 ) : completed ? (
@@ -258,14 +305,25 @@ export default function LessonView() {
                     </button>
                 )}
 
-                <button
-                    onClick={() => navigate(`/student/quiz/${(lesson.topic?.quizzes || lesson.topic?.quiz || [])[0]?.id}`)}
-                    disabled={!(lesson.topic?.quizzes || lesson.topic?.quiz || []).length}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-full hover:from-blue-600 hover:to-blue-700 transition active:scale-95 shadow-lg shadow-blue-400/30 text-[16px] flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                    <span>Take Quiz</span>
-                    <FaWandMagicSparkles className="text-xl" />
-                </button>
+                {completed && nextLessonId && (
+                    <button
+                        onClick={() => navigate(`/student/lessons/${nextLessonId}`)}
+                        className="w-full bg-gradient-to-r from-orange-400 to-[#f26c24] text-white font-bold py-4 rounded-full hover:from-orange-500 hover:to-[#e05b13] transition active:scale-95 shadow-lg shadow-orange-400/30 text-[16px] flex items-center justify-center gap-2"
+                    >
+                        <span>Continue to Next Lesson</span>
+                        <FaArrowRight className="text-lg" />
+                    </button>
+                )}
+
+                {quizAvailable && quizzes.length > 0 && (
+                    <button
+                        onClick={() => navigate(`/student/quiz/${quizzes[0].id}`)}
+                        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-full hover:from-blue-600 hover:to-blue-700 transition active:scale-95 shadow-lg shadow-blue-400/30 text-[16px] flex items-center justify-center gap-2"
+                    >
+                        <span>Take Quiz</span>
+                        <FaWandMagicSparkles className="text-xl" />
+                    </button>
+                )}
             </div>
         </div>
     );

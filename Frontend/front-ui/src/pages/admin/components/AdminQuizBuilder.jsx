@@ -718,16 +718,34 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                                                 )}
                                             </div>
                                             <div className="space-y-2">
-                                                {questionForm.options.map((opt, idx) => (
+                                                {questionForm.type === 'TRUE_FALSE' ? (
+                                                    questionForm.options.map((opt, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() => setOption(idx, 'isCorrect', true)}
+                                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left font-bold transition ${
+                                                                opt.isCorrect
+                                                                    ? 'border-green-500 bg-green-50 text-green-700'
+                                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                            }`}
+                                                        >
+                                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                                                                opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                                                            }`}>✓</span>
+                                                            {opt.text || (idx === 0 ? 'True' : 'False')}
+                                                            {opt.isCorrect && <span className="ml-auto text-[11px] font-extrabold uppercase text-green-600">Correct Answer</span>}
+                                                        </button>
+                                                    ))
+                                                ) : (
+                                                questionForm.options.map((opt, idx) => (
                                                     <div key={idx} className="flex items-center gap-2">
-                                                        {questionForm.type !== 'TRUE_FALSE' && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setOption(idx, 'isCorrect', !opt.isCorrect)}
-                                                                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                                title="Mark as correct"
-                                                            >✓</button>
-                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOption(idx, 'isCorrect', !opt.isCorrect)}
+                                                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                            title="Mark as correct"
+                                                        >✓</button>
                                                         <input
                                                             value={opt.text}
                                                             onChange={e => setOption(idx, 'text', e.target.value)}
@@ -771,10 +789,11 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                                                             </button>
                                                         )}
                                                     </div>
-                                                ))}
+                                                ))
+                                                )}
                                             </div>
                                             <p className="text-[11px] text-gray-400 font-medium mt-2">
-                                                {questionForm.type === 'TRUE_FALSE' ? 'Students choose True or False.' :
+                                                {questionForm.type === 'TRUE_FALSE' ? 'Tap the correct answer — True or False.' :
                                                     questionForm.type === 'MULTIPLE_CHOICE' ? '☑️ Students select all that apply.' :
                                                         questionForm.type === 'COLOR_MATCH' ? '🎨 Students pick the matching color/image.' :
                                                             'Exactly one correct answer.'}

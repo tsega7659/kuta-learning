@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    FaChevronLeft, FaCirclePlay, FaLock, FaCircleCheck, FaStar,
+    FaChevronLeft, FaLock, FaCircleCheck, FaStar,
     FaPen, FaHashtag, FaLeaf, FaPalette, FaInbox,
 } from 'react-icons/fa6';
 import api from '../../services/api';
@@ -133,15 +133,14 @@ export default function CourseDetail() {
                                                 const lessons = (topic.lessons || []).sort((a, b) => a.order - b.order);
                                                 const topicCompleted = lessons.filter(lesson => lesson.completed).length;
                                                 const topicProgress = lessons.length ? Math.round((topicCompleted / lessons.length) * 100) : 0;
-                                                const firstLesson = lessons[0];
                                                 const quiz = (topic.quizzes || topic.quiz || [])[0];
+                                                const allLessonsDone = lessons.length > 0 && lessons.every(l => l.completed);
+                                                const quizAvailable = topic.quizAvailable || (quiz && allLessonsDone);
 
                                                 return (
-                                                    <button
+                                                    <div
                                                         key={topic.id}
-                                                        type="button"
-                                                        onClick={() => firstLesson && !firstLesson.locked && navigate(`/student/lessons/${firstLesson.id}`)}
-                                                        className="w-full rounded-[24px] bg-[#f8f7f4] p-3 text-left shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)] transition active:scale-[0.98]"
+                                                        className="w-full rounded-[24px] bg-[#f8f7f4] p-3 text-left shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]"
                                                     >
                                                         <div className="flex items-start gap-3">
                                                             <div className={`flex h-14 w-14 items-center justify-center rounded-full ${style.iconBg}`}>
@@ -172,21 +171,54 @@ export default function CourseDetail() {
                                                             </div>
                                                         </div>
 
-                                                        <div className="mt-3 flex items-center justify-between gap-3 rounded-[18px] bg-white px-3 py-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <FaCirclePlay className="h-5 w-5 text-blue-500" />
-                                                                <span className="text-[12px] font-bold text-gray-700">{lessons.length} Lessons</span>
+                                                        {/* Individual lessons */}
+                                                        {lessons.length > 0 && (
+                                                            <div className="mt-3 space-y-2">
+                                                                {lessons.map((lesson, lessonIdx) => {
+                                                                    const status = lessonStatus(lesson);
+                                                                    return (
+                                                                        <button
+                                                                            key={lesson.id}
+                                                                            type="button"
+                                                                            disabled={lesson.locked}
+                                                                            onClick={() => !lesson.locked && navigate(`/student/lessons/${lesson.id}`)}
+                                                                            className={`w-full flex items-center justify-between gap-3 rounded-[18px] bg-white px-3 py-2.5 text-left transition active:scale-[0.98] ${
+                                                                                lesson.locked ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-50'
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                {status.icon}
+                                                                                <span className="text-[13px] font-bold text-gray-800 truncate">
+                                                                                    {lessonIdx + 1}. {lesson.title || `Lesson ${lessonIdx + 1}`}
+                                                                                </span>
+                                                                            </div>
+                                                                            <span className={`text-[10px] font-extrabold uppercase shrink-0 ${status.badgeClass}`}>
+                                                                                {status.badge}
+                                                                            </span>
+                                                                        </button>
+                                                                    );
+                                                                })}
                                                             </div>
+                                                        )}
 
-                                                            <div className="flex items-center gap-2 text-[11px] font-bold">
-                                                                {quiz ? (
-                                                                    <span className="rounded-full bg-yellow-100 px-2 py-1 text-yellow-700">Quiz</span>
-                                                                ) : (
-                                                                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">Practice</span>
-                                                                )}
+                                                        {/* Quiz button — only after all lessons done */}
+                                                        {quizAvailable && quiz && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => navigate(`/student/quiz/${quiz.id}`)}
+                                                                className="mt-3 w-full flex items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-yellow-400 to-yellow-500 px-3 py-2.5 text-[13px] font-extrabold text-yellow-900 shadow-sm transition active:scale-[0.98]"
+                                                            >
+                                                                <FaStar className="h-4 w-4" />
+                                                                Take Quiz
+                                                            </button>
+                                                        )}
+
+                                                        {lessons.length === 0 && (
+                                                            <div className="mt-3 rounded-[18px] bg-white px-3 py-2 text-[12px] font-bold text-gray-400">
+                                                                No lessons yet
                                                             </div>
-                                                        </div>
-                                                    </button>
+                                                        )}
+                                                    </div>
                                                 );
                                             })}
                                         </div>

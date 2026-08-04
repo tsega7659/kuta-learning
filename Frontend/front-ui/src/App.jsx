@@ -17,6 +17,7 @@ import LessonView from './pages/student/LessonView';
 import QuizPage from './pages/student/QuizPage';
 import QuizResult from './pages/student/QuizResult';
 import HomeProfile from './pages/student/HomeProfile';
+import ParentSettings from './pages/student/ParentSettings';
 
 import PracticeMenu from './pages/student/PracticeMenu';
 import PracticeSession from './pages/student/PracticeSession';
@@ -58,6 +59,7 @@ function App() {
 
               <Route path="games" element={<div className="p-8 text-center"><h1 className="text-2xl font-bold">Games</h1><p className="text-gray-400 mt-2">Coming Soon!</p></div>} />
               <Route path="profile" element={<HomeProfile />} />
+              <Route path="parent-settings" element={<ParentSettings />} />
               <Route path="progress" element={<div className="p-8 text-center"><h1 className="text-2xl font-bold">Progress</h1><p className="text-gray-400 mt-2">Coming Soon!</p></div>} />
             </Route>
           </Route>
