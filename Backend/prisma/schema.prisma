@@ -132,6 +132,7 @@ model Quiz {
   topicId      String        @unique
   topic        Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   title        String
+  description  String?       // Optional short description shown to students
   passingScore Int           // As a percentage
   order        Int           @default(0)
   createdAt    DateTime      @default(now())

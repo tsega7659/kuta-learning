@@ -340,3 +340,20 @@ export const submitPracticeAttempt = async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 };
+
+// POST /api/practice/preview
+// Fetch all questions for given topicIds for admin mock exam preview
+export const getPreviewQuestions = async (req, res) => {
+    try {
+        const { topicIds } = req.body;
+        if (!topicIds || !Array.isArray(topicIds)) return res.json([]);
+        const questions = await prisma.question.findMany({
+            where: { quiz: { topicId: { in: topicIds } } },
+            include: { options: true }
+        });
+        res.json(questions);
+    } catch (err) {
+        console.error("Preview fail:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};

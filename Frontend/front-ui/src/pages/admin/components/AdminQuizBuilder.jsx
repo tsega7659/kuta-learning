@@ -102,10 +102,15 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         e.preventDefault();
         setSaving(true);
         try {
+            const score = parseInt(quizForm.passingScore);
+            if (isNaN(score)) {
+                alert('Please enter a valid passing score (0-100)');
+                return;
+            }
             await api.post(quizUrl, {
-                title: quizForm.title,
+                title: quizForm.title.trim(),
                 description: quizForm.description,
-                passingScore: parseInt(quizForm.passingScore),
+                passingScore: score,
             });
             await fetchQuiz();
         } catch (err) {
@@ -119,10 +124,15 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         e.preventDefault();
         setSaving(true);
         try {
+            const score = parseInt(quizForm.passingScore);
+            if (isNaN(score)) {
+                alert('Please enter a valid passing score (0-100)');
+                return;
+            }
             await api.put(`${quizUrl}/${quiz.id}`, {
-                title: quizForm.title,
+                title: quizForm.title.trim() || quiz.title,
                 description: quizForm.description,
-                passingScore: parseInt(quizForm.passingScore),
+                passingScore: score,
             });
             await fetchQuiz();
         } catch (err) {
@@ -360,7 +370,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                 {/* Header */}
                 <div className="bg-gray-50 border-b border-gray-100 p-5 flex justify-between items-center">
                     <div>
-                        <h2 className="text-lg font-black text-[#0B3A63]">📝 Quiz Builder</h2>
+                        <h2 className="text-lg font-black text-[#0B3A63]">{defaultOpenMode === 'question' ? '📝 Add Question to Bank' : '📝 Quiz Builder'}</h2>
                         <p className="text-xs font-bold text-gray-400 mt-0.5">Topic: {topicName}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition">
@@ -369,16 +379,18 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                    {/* ── Quiz Metadata ── */}
-                    {!quiz ? (
-                        <form onSubmit={handleCreateQuiz} className="bg-blue-50/50 border border-blue-100 rounded-3xl p-5 space-y-4">
+                    {/* ── Quiz Metadata (Hidden in Question Bank Mode) ── */}
+                    {!quiz && defaultOpenMode !== 'question' && (
+                        <form onSubmit={handleCreateQuiz} autoComplete="off" className="bg-blue-50/50 border border-blue-100 rounded-3xl p-5 space-y-4">
                             <h3 className="font-black text-[#0B3A63]">Create a Quiz</h3>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Quiz Title *</label>
                                 <input
+                                    name="quiz_title"
+                                    autoComplete="off"
                                     value={quizForm.title}
                                     onChange={e => setQuizForm({ ...quizForm, title: e.target.value })}
-                                    placeholder="e.g. Alphabet Quiz: A-F"
+                                    placeholder={`${topicName} Quiz`}
                                     className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-[#0F4C81] focus:outline-none font-medium text-sm"
                                     required
                                 />
@@ -386,9 +398,11 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 mb-1">Description (optional)</label>
                                 <textarea
+                                    name="quiz_desc"
+                                    autoComplete="off"
                                     value={quizForm.description}
                                     onChange={e => setQuizForm({ ...quizForm, description: e.target.value })}
-                                    placeholder="Short description for students"
+                                    placeholder={`Description for ${topicName} Quiz`}
                                     rows={2}
                                     className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-[#0F4C81] focus:outline-none font-medium text-sm resize-none"
                                 />
@@ -413,62 +427,70 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                                 {saving ? 'Creating...' : 'Create Quiz'}
                             </button>
                         </form>
-                    ) : (
+                    )}
+
+                    {quiz && (
                         <>
                             {/* Quiz meta view/edit */}
-                            <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-soft">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex-1 pr-4">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-black text-[#0B3A63] text-lg">{quiz.title}</h3>
-                                            <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Pass {quiz.passingScore}%</span>
+                            {defaultOpenMode !== 'question' && (
+                                <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-soft">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1 pr-4">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-black text-[#0B3A63] text-lg">{quiz.title}</h3>
+                                                <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Pass {quiz.passingScore}%</span>
+                                            </div>
+                                            {quiz.description && (
+                                                <p className="text-gray-500 font-medium text-sm mt-1">{quiz.description}</p>
+                                            )}
+                                            <p className="text-xs font-bold text-gray-400 mt-2">{quiz.questions?.length || 0} questions</p>
                                         </div>
-                                        {quiz.description && (
-                                            <p className="text-gray-500 font-medium text-sm mt-1">{quiz.description}</p>
-                                        )}
-                                        <p className="text-xs font-bold text-gray-400 mt-2">{quiz.questions?.length || 0} questions</p>
+                                        <div className="flex gap-2 shrink-0">
+                                            <button
+                                                onClick={handleDeleteQuiz}
+                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
+                                                title="Delete Quiz"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-2 shrink-0">
-                                        <button
-                                            onClick={handleDeleteQuiz}
-                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
-                                            title="Delete Quiz"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </div>
 
-                                {/* Inline edit quiz meta */}
-                                <form onSubmit={handleUpdateQuiz} className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                                    <input
-                                        value={quizForm.title}
-                                        onChange={e => setQuizForm({ ...quizForm, title: e.target.value })}
-                                        placeholder="Title"
-                                        className="px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
-                                    />
-                                    <input
-                                        value={quizForm.description}
-                                        onChange={e => setQuizForm({ ...quizForm, description: e.target.value })}
-                                        placeholder="Description"
-                                        className="px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
-                                    />
-                                    <div className="flex gap-2">
+                                    {/* Inline edit quiz meta */}
+                                    <form onSubmit={handleUpdateQuiz} autoComplete="off" className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                                         <input
-                                            type="number"
-                                            value={quizForm.passingScore}
-                                            onChange={e => setQuizForm({ ...quizForm, passingScore: e.target.value })}
-                                            placeholder="Pass %"
-                                            min="0"
-                                            max="100"
-                                            className="flex-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
+                                            name="edit_quiz_title"
+                                            autoComplete="off"
+                                            value={quizForm.title}
+                                            onChange={e => setQuizForm({ ...quizForm, title: e.target.value })}
+                                            placeholder={`${topicName} Quiz`}
+                                            className="px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
                                         />
-                                        <button type="submit" disabled={saving} className="bg-green-500 text-white font-bold px-4 rounded-xl hover:bg-green-600 transition disabled:opacity-50">
-                                            <CheckIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
+                                        <input
+                                            name="edit_quiz_desc"
+                                            autoComplete="off"
+                                            value={quizForm.description}
+                                            onChange={e => setQuizForm({ ...quizForm, description: e.target.value })}
+                                            placeholder={`Description for ${topicName}`}
+                                            className="px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
+                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                value={quizForm.passingScore}
+                                                onChange={e => setQuizForm({ ...quizForm, passingScore: e.target.value })}
+                                                placeholder="Pass %"
+                                                min="0"
+                                                max="100"
+                                                className="flex-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
+                                            />
+                                            <button type="submit" disabled={saving} className="bg-green-500 text-white font-bold px-4 rounded-xl hover:bg-green-600 transition disabled:opacity-50">
+                                                <CheckIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            )}
 
                             {/* ── Questions List ── */}
                             <div>

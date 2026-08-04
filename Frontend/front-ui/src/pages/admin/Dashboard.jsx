@@ -24,8 +24,6 @@ export default function AdminDashboard() {
 
                 const courseList = coursesRes.data || [];
                 setCourses(courseList.slice(0, 3));
-
-                // Count total lessons across all courses
                 let totalLessons = 0;
                 for (const c of courseList) {
                     try {
@@ -33,7 +31,7 @@ export default function AdminDashboard() {
                         (detail.chapters || []).forEach(ch =>
                             (ch.topics || []).forEach(t => { totalLessons += (t.lessons || []).length; })
                         );
-                    } catch { /* skip */ }
+                    } catch { }
                 }
 
                 setStats({
@@ -51,9 +49,9 @@ export default function AdminDashboard() {
     }, []);
 
     const statCards = [
-        { label: 'Total Lessons', value: stats.lessons, note: '+4 this week', icon: BookOpenIcon, iconColor: 'text-blue-600 bg-blue-50' },
-        { label: 'Active Students', value: stats.students, note: '+12 new', icon: UserGroupIcon, iconColor: 'text-blue-600 bg-blue-50' },
-        { label: 'Active Courses', value: stats.courses, note: '+2 this term', icon: AcademicCapIcon, iconColor: 'text-blue-600 bg-blue-50' },
+        { label: 'Total Lessons', value: stats.lessons, note: '', icon: BookOpenIcon, iconColor: 'text-blue-600 bg-blue-50' },
+        { label: 'Active Students', value: stats.students, note: '', icon: UserGroupIcon, iconColor: 'text-blue-600 bg-blue-50' },
+        { label: 'Active Courses', value: stats.courses, note: '', icon: AcademicCapIcon, iconColor: 'text-blue-600 bg-blue-50' },
     ];
 
     const quickActions = [
@@ -127,7 +125,7 @@ export default function AdminDashboard() {
                         : courses.map(c => (
                             <button
                                 key={c.id}
-                                onClick={() => navigate(`/admin/courses/${c.id}`)}
+                                onClick={() => navigate('/admin/courses', { state: { courseId: c.id } })}
                                 className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5 flex items-center gap-4 hover:shadow-md hover:border-blue-100 transition text-left"
                             >
                                 <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-700 font-extrabold text-xl">

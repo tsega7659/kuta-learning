@@ -5,6 +5,7 @@ import {
     PlusCircleIcon, ChevronLeftIcon, ChevronRightIcon,
     ArrowLeftIcon, ArrowPathIcon, XMarkIcon, CheckCircleIcon
 } from '@heroicons/react/24/outline';
+import AdminQuizBuilder from './components/AdminQuizBuilder';
 
 const TYPE_BADGE = {
     SINGLE_CHOICE: 'bg-green-100 text-green-700',
@@ -97,9 +98,11 @@ function QuizDetailModal({ quiz, onClose }) {
 export default function AdminQuizzes() {
     const navigate = useNavigate();
     const [courses, setCourses] = useState([]);
+    const [fullCourseTree, setFullCourseTree] = useState([]);
     const [quizzes, setQuizzes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedQuiz, setSelectedQuiz] = useState(null);
+    const [builderCtx, setBuilderCtx] = useState(null);
 
     const [selCourse, setSelCourse] = useState('ALL');
     const [selSubject, setSelSubject] = useState('ALL');
@@ -112,10 +115,12 @@ export default function AdminQuizzes() {
         try {
             const { data: courseList } = await api.get('/courses');
             setCourses(courseList);
+            const tree = [];
             let flat = [];
             for (const course of courseList) {
                 try {
                     const { data: detail } = await api.get(`/courses/${course.id}`);
+                    tree.push(detail);
                     const quizFetches = [];
                     (detail.chapters || []).forEach(ch =>
                         (ch.topics || []).forEach(t =>
@@ -135,6 +140,7 @@ export default function AdminQuizzes() {
                     }));
                 } catch { /* skip */ }
             }
+            setFullCourseTree(tree);
             setQuizzes(flat);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
@@ -144,18 +150,28 @@ export default function AdminQuizzes() {
     useEffect(() => { setPage(1); }, [selCourse, selSubject, selTopic]);
 
     const availableSubjects = useMemo(() => {
-        const qs = selCourse === 'ALL' ? quizzes : quizzes.filter(q => q.courseId === selCourse);
-        const u = new Map(); qs.forEach(q => u.set(q.chapterId, q.chapterTitle));
-        return Array.from(u.entries()).map(([id, title]) => ({ id, title }));
-    }, [quizzes, selCourse]);
+        const src = selCourse === 'ALL' ? fullCourseTree : fullCourseTree.filter(c => c.id === selCourse);
+        return src.flatMap(c => c.chapters || []);
+    }, [fullCourseTree, selCourse]);
 
     const availableTopics = useMemo(() => {
-        let qs = quizzes;
-        if (selCourse !== 'ALL') qs = qs.filter(q => q.courseId === selCourse);
-        if (selSubject !== 'ALL') qs = qs.filter(q => q.chapterId === selSubject);
-        const u = new Map(); qs.forEach(q => u.set(q.topicId, q.topicTitle));
-        return Array.from(u.entries()).map(([id, title]) => ({ id, title }));
-    }, [quizzes, selCourse, selSubject]);
+        const src = selSubject === 'ALL' ? availableSubjects : availableSubjects.filter(s => s.id === selSubject);
+        return src.flatMap(s => s.topics || []);
+    }, [availableSubjects, selSubject]);
+
+    const handleCreateQuiz = () => {
+        if (selCourse === 'ALL' || selSubject === 'ALL' || selTopic === 'ALL') {
+            alert('Please select a Course, Subject, and Topic from the dropdown filters first in order to create a quiz directly.');
+            return;
+        }
+        const topicObj = availableTopics.find(t => t.id === selTopic);
+        setBuilderCtx({
+            courseId: selCourse,
+            chapterId: selSubject,
+            topicId: selTopic,
+            topicName: topicObj?.title || 'Selected Topic'
+        });
+    };
 
     const filtered = useMemo(() => quizzes.filter(q => {
         const matchCourse = selCourse === 'ALL' || q.courseId === selCourse;
@@ -173,10 +189,10 @@ export default function AdminQuizzes() {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-extrabold text-[#0B3A63]">Quiz Management</h1>
-                    <p className="text-gray-500 font-medium text-sm mt-1">Click any row to inspect questions. Create quizzes via the Question Bank.</p>
+                    <p className="text-gray-500 font-medium text-sm mt-1">Select filters to create a new quiz, or click any row to inspect questions.</p>
                 </div>
                 <button
-                    onClick={() => navigate('/admin/question-bank')}
+                    onClick={handleCreateQuiz}
                     className="flex items-center gap-2 px-5 py-2.5 bg-[#0F4C81] hover:bg-[#0B3A63] text-white font-bold rounded-xl shadow-sm transition text-sm"
                 >
                     <PlusCircleIcon className="w-5 h-5" /> Create Quiz
@@ -280,6 +296,20 @@ export default function AdminQuizzes() {
             {/* Quiz Question Detail Modal */}
             {selectedQuiz && (
                 <QuizDetailModal quiz={selectedQuiz} onClose={() => setSelectedQuiz(null)} />
+            )}
+
+            {/* Quiz Builder Modal */}
+            {builderCtx && (
+                <AdminQuizBuilder
+                    courseId={builderCtx.courseId}
+                    chapterId={builderCtx.chapterId}
+                    topicId={builderCtx.topicId}
+                    topicName={builderCtx.topicName}
+                    onClose={() => {
+                        setBuilderCtx(null);
+                        loadData();
+                    }}
+                />
             )}
         </div>
     );

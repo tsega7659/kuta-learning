@@ -66,12 +66,14 @@ export const me = async (req, res) => {
         });
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        const displayName = user.studentProfile?.name ?? user.email.split("@")[0];
+
         const profile = {
             id: user.id,
             email: user.email,
             role: user.role,
+            name: displayName,
             ...(user.studentProfile && {
-                name: user.studentProfile.name,
                 gradeLevel: user.studentProfile.gradeLevel,
                 avatarUrl: user.studentProfile.avatarUrl,
             }),

@@ -25,7 +25,6 @@ import PracticeResult from './pages/student/PracticeResult';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminStudents from './pages/admin/Students';
 import AdminCourses from './pages/admin/Courses';
-import AdminCourseDetail from './pages/admin/CourseDetail';
 import AdminQuestionBank from './pages/admin/QuestionBank';
 import AdminQuizzes from './pages/admin/Quizzes';
 import AdminMockExams from './pages/admin/MockExams';
@@ -66,8 +65,7 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="students" element={<AdminStudents />} />
-              <Route path="courses" element={<AdminCourses />} />
-              <Route path="courses/:courseId" element={<AdminCourseDetail />} />
+<Route path="courses" element={<AdminCourses />} />
               <Route path="question-bank" element={<AdminQuestionBank />} />
               <Route path="progress" element={<ComingSoon title="Analytics" />} />
               <Route path="quizzes" element={<AdminQuizzes />} />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import {
     PlusIcon, PencilIcon, PlayCircleIcon, DocumentCheckIcon,
@@ -6,6 +7,7 @@ import {
     ArrowLeftIcon, PhotoIcon
 } from '@heroicons/react/24/outline';
 import AdminLessonModal from './components/AdminLessonModal';
+import AdminQuizBuilder from './components/AdminQuizBuilder';
 
 const GRADE_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -57,9 +59,11 @@ export default function AdminCourses() {
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [selectedChapterId, setSelectedChapterId] = useState(null);
     const [selectedTopicId, setSelectedTopicId] = useState(null);
+    const location = useLocation();
 
     // ── Modals ──
     const [lessonModalCtx, setLessonModalCtx] = useState(null);
+    const [quizModalCtx, setQuizModalCtx] = useState(null); // { chapterId, topicId, topicName }
     const [showCourseModal, setShowCourseModal] = useState(false);
     const [showChapterModal, setShowChapterModal] = useState(false);
     const [showTopicModal, setShowTopicModal] = useState(false);
@@ -103,18 +107,31 @@ export default function AdminCourses() {
         try {
             const { data } = await api.get('/courses');
             setCourses(data);
-            if (data.length > 0) setSelCourseId(data[0].id);
+            if (location.state?.courseId) {
+                setSelCourseId(location.state.courseId);
+            } else if (data.length > 0) {
+                setSelCourseId(data[0].id);
+            }
         } catch (err) { console.error(err); }
         finally { setLoadingCourses(false); }
     };
     useEffect(() => { fetchCourses(); }, []);
 
+    useEffect(() => {
+        if (location.state?.courseId && courses.length > 0) {
+            setSelCourseId(location.state.courseId);
+        }
+    }, [location.state?.courseId, courses]);
+
     // ── Load course detail on selection ──
-    const fetchCourseDetail = async (id) => {
+    const fetchCourseDetail = async (id, keepNav = false) => {
         setLoadingDetail(true);
-        setCourseDetail(null);
-        setSelectedChapterId(null);
-        setSelectedTopicId(null);
+        // Only reset navigation when explicitly switching courses
+        if (!keepNav) {
+            setCourseDetail(null);
+            setSelectedChapterId(null);
+            setSelectedTopicId(null);
+        }
         try {
             const { data } = await api.get(`/courses/${id}`);
             setCourseDetail(data);
@@ -151,7 +168,7 @@ export default function AdminCourses() {
             setShowChapterModal(false);
             setChapterForm({ title: '', description: '' });
             setChapterCoverFile(null); setChapterCoverPreview(null);
-            await fetchCourseDetail(selCourseId);
+            await fetchCourseDetail(selCourseId, true);
         } catch { alert('Failed to create chapter'); }
         finally { setSaving(false); }
     };
@@ -164,7 +181,7 @@ export default function AdminCourses() {
             setShowTopicModal(false);
             setTopicForm({ title: '', description: '' });
             setTopicCoverFile(null); setTopicCoverPreview(null);
-            await fetchCourseDetail(selCourseId);
+            await fetchCourseDetail(selCourseId, true);
         } catch { alert('Failed to create topic'); }
         finally { setSaving(false); }
     };
@@ -177,7 +194,7 @@ export default function AdminCourses() {
             setShowLessonModal(false);
             setLessonForm({ title: '', description: '' });
             setLessonCoverFile(null); setLessonCoverPreview(null);
-            await fetchCourseDetail(selCourseId);
+            await fetchCourseDetail(selCourseId, true);
         } catch { alert('Failed to create lesson'); }
         finally { setSaving(false); }
     };
@@ -278,17 +295,12 @@ export default function AdminCourses() {
                                     >
                                         <PlusIcon className="w-4 h-4" /> Add Lesson
                                     </button>
-                                    {(activeTopic?.lessons || []).length > 0 && (
-                                        <button
-                                            onClick={() => {
-                                                const firstLesson = (activeTopic.lessons || []).sort((a, b) => a.order - b.order)[0];
-                                                setLessonModalCtx({ lesson: firstLesson, chapterId: selectedChapterId, topicId: selectedTopicId });
-                                            }}
-                                            className="flex items-center gap-1.5 px-4 py-2 border-2 border-gray-200 text-gray-600 font-bold rounded-lg text-sm hover:bg-gray-50 transition"
-                                        >
-                                            <PencilIcon className="w-4 h-4" /> Add Content
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => setQuizModalCtx({ chapterId: selectedChapterId, topicId: selectedTopicId, topicName: activeTopic?.title })}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-white text-grey-500 font-bold rounded-lg text-sm hover:bg-purple-700 transition"
+                                    >
+                                        <PlusIcon className="w-4 h-4" /> Create Quiz
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -465,7 +477,21 @@ export default function AdminCourses() {
                     lesson={lessonModalCtx.lesson}
                     onClose={() => {
                         setLessonModalCtx(null);
-                        fetchCourseDetail(selCourseId);
+                        fetchCourseDetail(selCourseId, true);
+                    }}
+                />
+            )}
+
+            {/* ── Quiz Builder Modal ── */}
+            {quizModalCtx && (
+                <AdminQuizBuilder
+                    courseId={selCourseId}
+                    chapterId={quizModalCtx.chapterId}
+                    topicId={quizModalCtx.topicId}
+                    topicName={quizModalCtx.topicName}
+                    onClose={() => {
+                        setQuizModalCtx(null);
+                        fetchCourseDetail(selCourseId, true);
                     }}
                 />
             )}

@@ -6,7 +6,8 @@ import {
     getPracticeAttempt,
     submitPracticeAttempt,
     getRandomQuestion,
-    verifyRandomQuestion
+    verifyRandomQuestion,
+    getPreviewQuestions
 } from "./controllers.js";
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.get("/topics", getPracticeTopics);
 router.post("/topics/:topicId/start", startPracticeModule);
 router.get("/attempts/:attemptId", getPracticeAttempt);
 router.post("/attempts/:attemptId/submit", submitPracticeAttempt);
+router.post("/preview", getPreviewQuestions);
 
 export default router;

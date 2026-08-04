@@ -2,8 +2,95 @@ import { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import {
     PlusCircleIcon, ArrowPathIcon, TrashIcon, EyeIcon,
-    CheckCircleIcon, ClockIcon, BookOpenIcon
+    CheckCircleIcon, ClockIcon, BookOpenIcon, ArrowLeftIcon
 } from '@heroicons/react/24/outline';
+
+const TYPE_BADGE = {
+    SINGLE_CHOICE: 'bg-green-100 text-green-700',
+    MULTIPLE_CHOICE: 'bg-purple-100 text-purple-700',
+    TRUE_FALSE: 'bg-blue-100 text-blue-700',
+    COLOR_MATCH: 'bg-pink-100 text-pink-700',
+    WORD_ORDER: 'bg-yellow-100 text-yellow-700',
+    DRAG_AND_DROP: 'bg-orange-100 text-orange-700',
+    MATCHING: 'bg-indigo-100 text-indigo-700',
+    FILL_IN_BLANK: 'bg-teal-100 text-teal-700',
+};
+const TYPE_LABEL = {
+    SINGLE_CHOICE: 'Single Choice', MULTIPLE_CHOICE: 'Multiple Answer',
+    TRUE_FALSE: 'True / False', COLOR_MATCH: 'Color Match',
+    WORD_ORDER: 'Word Order', DRAG_AND_DROP: 'Drag & Drop',
+    MATCHING: 'Matching', FILL_IN_BLANK: 'Fill Blank',
+};
+
+// ── Question detail slide-over modal ──
+function PreviewModal({ exam, onClose }) {
+    const [questions, setQuestions] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.post('/practice/preview', { topicIds: exam.topicIds })
+            .then(res => setQuestions(res.data || []))
+            .catch(() => setQuestions([]))
+            .finally(() => setLoading(false));
+    }, [exam.id]);
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-100 bg-gray-50">
+                    <button onClick={onClose} className="p-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+                        <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <div className="flex-1">
+                        <h2 className="text-lg font-extrabold text-[#0B3A63]">Preview: {exam.title}</h2>
+                        <p className="text-xs font-bold text-gray-400">{exam.courseTitle} · {exam.topicTitles?.length} topics</p>
+                    </div>
+                    <span className="bg-blue-50 text-blue-700 font-bold text-xs px-3 py-1 rounded-full">
+                        {questions.length} Total Questions
+                    </span>
+                </div>
+
+                {/* Question list */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                    {loading ? (
+                        <div className="py-16 text-center text-gray-400 font-bold">Loading questions...</div>
+                    ) : questions.length === 0 ? (
+                        <div className="py-16 text-center text-gray-400 font-bold">No questions available in the question bank for these topics.</div>
+                    ) : (
+                        questions.map((q, idx) => (
+                            <div key={q.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="w-7 h-7 bg-[#0F4C81] text-white rounded-lg flex items-center justify-center text-xs font-extrabold shrink-0">
+                                        {idx + 1}
+                                    </span>
+                                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded ${TYPE_BADGE[q.type] || 'bg-gray-100 text-gray-600'}`}>
+                                        {TYPE_LABEL[q.type] || q.type}
+                                    </span>
+                                </div>
+                                <p className="font-bold text-gray-800 text-sm mb-2 leading-snug">{q.text}</p>
+                                {q.resourceUrl && (
+                                    <p className="text-xs text-blue-500 font-bold mb-2">🔗 Has media attachment</p>
+                                )}
+                                <div className="grid grid-cols-2 gap-1.5 mt-2">
+                                    {(q.options || []).map(opt => (
+                                        <div key={opt.id} className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold border ${opt.isCorrect ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-600'}`}>
+                                            {opt.isCorrect && <CheckCircleIcon className="w-3.5 h-3.5 shrink-0 text-green-600" />}
+                                            <span className="truncate">{opt.text || opt.imageUrl}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                {q.explanation && (
+                                    <p className="mt-2 text-[11px] text-gray-400 font-bold italic">💡 {q.explanation}</p>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // ─── Persist mock exam configs to localStorage ───
 const STORAGE_KEY = 'kuta_mock_exam_configs';
@@ -17,7 +104,9 @@ export default function AdminMockExams() {
     // ── Live topic data from the same source as Practice Menu ──
     const [practiceTopics, setPracticeTopics] = useState([]);  // from /practice/topics
     const [courses, setCourses] = useState([]);
+    const [fullCourseTree, setFullCourseTree] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [previewExam, setPreviewExam] = useState(null);
 
     // ── Filters ──
     const [selCourse, setSelCourse] = useState('ALL');
@@ -41,6 +130,16 @@ export default function AdminMockExams() {
             const { data: courseList } = await api.get('/courses');
             setCourses(courseList);
 
+            // Build full course tree with chapters & topics for filter dropdowns
+            const tree = [];
+            for (const course of courseList) {
+                try {
+                    const { data: detail } = await api.get(`/courses/${course.id}`);
+                    tree.push(detail);
+                } catch { /* skip */ }
+            }
+            setFullCourseTree(tree);
+
             // Load practice topics — EXACTLY the same endpoint as students use
             const { data: topics } = await api.get('/practice/topics');
             setPracticeTopics(topics);
@@ -53,25 +152,28 @@ export default function AdminMockExams() {
 
     useEffect(() => { loadData(); }, []);
 
-    // ── Build subject/topic filter options from live topics ──
+    // ── Build subject/topic filter options from all courses ──
     const availableSubjects = useMemo(() => {
-        const src = selCourse === 'ALL' ? practiceTopics : practiceTopics.filter(t => t.courseTitle === selCourse);
-        const u = new Map();
-        src.forEach(t => u.set(t.chapterTitle, t.chapterTitle));
-        return Array.from(u.keys()).map(v => ({ id: v, title: v }));
-    }, [practiceTopics, selCourse]);
+        const src = selCourse === 'ALL' ? fullCourseTree : fullCourseTree.filter(c => c.id === selCourse);
+        return src.flatMap(c => c.chapters || []);
+    }, [fullCourseTree, selCourse]);
 
     const availableTopics = useMemo(() => {
-        let src = practiceTopics;
-        if (selCourse !== 'ALL') src = src.filter(t => t.courseTitle === selCourse);
-        if (selSubject !== 'ALL') src = src.filter(t => t.chapterTitle === selSubject);
-        return src;
-    }, [practiceTopics, selCourse, selSubject]);
+        const src = selSubject === 'ALL' ? availableSubjects : availableSubjects.filter(ch => ch.id === selSubject);
+        return src.flatMap(ch => ch.topics || []);
+    }, [availableSubjects, selSubject]);
 
     const filteredTopics = useMemo(() => {
-        if (selTopic !== 'ALL') return availableTopics.filter(t => t.id === selTopic);
-        return availableTopics;
-    }, [availableTopics, selTopic]);
+        let src = practiceTopics;
+        if (selTopic !== 'ALL') {
+            return src.filter(t => t.id === selTopic);
+        }
+        if (selSubject !== 'ALL' || selCourse !== 'ALL') {
+            const allowedTopicIds = new Set(availableTopics.map(t => t.id));
+            return src.filter(t => allowedTopicIds.has(t.id));
+        }
+        return src;
+    }, [practiceTopics, availableTopics, selTopic, selSubject, selCourse]);
 
     const totalQuestions = filteredTopics.reduce((acc, t) => acc + t.totalQuestions, 0);
 
@@ -122,9 +224,6 @@ export default function AdminMockExams() {
     const handleCourseChange = (v) => { setSelCourse(v); setSelSubject('ALL'); setSelTopic('ALL'); };
     const handleSubjectChange = (v) => { setSelSubject(v); setSelTopic('ALL'); };
 
-    // Unique courses from live topics
-    const topicCourses = [...new Set(practiceTopics.map(t => t.courseTitle))];
-
     return (
         <div className="p-8 font-sans text-gray-800">
 
@@ -164,7 +263,7 @@ export default function AdminMockExams() {
                         className="p-2 border border-gray-200 rounded-lg font-bold text-sm bg-gray-50 outline-none focus:border-[#0F4C81]"
                     >
                         <option value="ALL">All Courses</option>
-                        {topicCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                        {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                     </select>
                 </div>
 
@@ -278,7 +377,7 @@ export default function AdminMockExams() {
 
                             <div className="flex gap-2 mt-auto">
                                 <button
-                                    onClick={() => alert(`Preview Mode: "${exam.title}"\n\nTopics: ${exam.topicTitles?.join(', ')}\nQuestions: ${exam.questionCount}\n\nFull student preview will connect to the exam session.`)}
+                                    onClick={() => setPreviewExam(exam)}
                                     className="flex-1 py-2 rounded-xl border-2 border-[#0F4C81] text-[#0F4C81] font-bold text-sm hover:bg-blue-50 transition flex items-center justify-center gap-1.5"
                                 >
                                     <EyeIcon className="w-4 h-4" /> Preview
@@ -286,8 +385,8 @@ export default function AdminMockExams() {
                                 <button
                                     onClick={() => togglePublish(exam.id)}
                                     className={`flex-1 py-2 rounded-xl font-bold text-sm transition flex items-center justify-center gap-1.5 ${exam.status === 'published'
-                                            ? 'bg-red-50 text-red-600 hover:bg-red-100 border-2 border-transparent'
-                                            : 'bg-[#0F4C81] text-white hover:bg-[#0B3A63] border-2 border-[#0F4C81]'
+                                        ? 'bg-red-50 text-red-600 hover:bg-red-100 border-2 border-transparent'
+                                        : 'bg-[#0F4C81] text-white hover:bg-[#0B3A63] border-2 border-[#0F4C81]'
                                         }`}
                                 >
                                     <CheckCircleIcon className="w-4 h-4" />
@@ -303,6 +402,10 @@ export default function AdminMockExams() {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {previewExam && (
+                <PreviewModal exam={previewExam} onClose={() => setPreviewExam(null)} />
             )}
         </div>
     );

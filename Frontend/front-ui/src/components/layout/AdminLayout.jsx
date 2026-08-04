@@ -6,6 +6,7 @@ import {
     ClipboardDocumentCheckIcon, BellIcon, Cog6ToothIcon,
     MagnifyingGlassIcon, ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
+import { FaGraduationCap } from 'react-icons/fa';
 
 const NAV_ITEMS = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: Squares2X2Icon },
@@ -22,6 +23,7 @@ const BOTTOM_NAV_ITEMS = [
 export default function AdminLayout() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const displayName = user?.name || user?.email?.split('@')[0] || 'Content Manager';
 
     const handleLogout = () => {
         logout();
@@ -35,7 +37,7 @@ export default function AdminLayout() {
                 {/* Brand */}
                 <div className="px-6 py-6 flex items-center gap-3">
                     <div className="w-10 h-10 bg-[#0F4C81] rounded-xl flex items-center justify-center">
-                        <span className="text-xl text-white">🎓</span>
+                        <span className="text-xl text-white"><FaGraduationCap /></span>
                     </div>
                     <div>
                         <h2 className="font-extrabold text-[#0B3A63] text-lg leading-tight">Kuta Learning</h2>
@@ -92,25 +94,15 @@ export default function AdminLayout() {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 bg-[#F8F9FB]">
                 {/* Top Header */}
-                <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0 relative z-10">
-                    {/* Global Search */}
-                    <div className="flex-1 max-w-2xl relative">
-                        <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-4 top-2.5" />
-                        <input
-                            type="text"
-                            placeholder="Search lessons, students, or resources..."
-                            className="w-full pl-12 pr-4 py-2.5 rounded-full bg-gray-50 border border-transparent hover:border-gray-200 outline-none focus:border-[#0F4C81] focus:bg-white transition text-sm font-bold text-gray-700"
-                        />
-                    </div>
-
+                <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-end px-8 shrink-0 relative z-10">
                     {/* User Profile */}
                     <div className="flex items-center gap-4 ml-8 border-l border-gray-200 pl-8">
                         <div className="text-right">
-                            <p className="font-extrabold text-[#0B3A63] text-sm">{user?.name || 'Prof. Arthur Kuta'}</p>
-                            <p className="text-[11px] font-bold text-gray-400">Senior Educator</p>
+                            <p className="font-extrabold text-[#0B3A63] text-sm">{displayName}</p>
+                            <p className="text-[11px] font-bold text-gray-400">Content Manager</p>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-[#0F4C81] flex items-center justify-center font-bold text-white shadow-sm ring-2 ring-white">
-                            {user?.name?.[0] || 'A'}
+                            {displayName?.[0]?.toUpperCase() || 'C'}
                         </div>
                     </div>
                 </header>
