@@ -236,7 +236,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         setQuestionForm(prev => {
             const options = [...prev.options];
             const singleSelect = prev.type !== 'MULTIPLE_CHOICE';
-            if (field === 'isCorrect' && value && singleSelect) {
+            if (field === 'isCorrect' && singleSelect) {
                 options.forEach(o => { o.isCorrect = false; });
             }
             options[idx] = { ...options[idx], [field]: value };
