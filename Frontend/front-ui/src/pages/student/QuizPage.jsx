@@ -29,13 +29,7 @@ function shuffle(arr) {
     return a;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MATCHING RENDERER
-// Two columns: left = questions (fixed order), right = answers (shuffled)
-// Student taps a left item then a right item to form a pair.
-// ─────────────────────────────────────────────────────────────────────────────
 function MatchingQuestion({ question, answer, setAnswer }) {
-    // Parse pairs from options: text = question, imageUrl = "match::<answer>"
     const pairs = question.options.map(o => ({
         id: o.id,
         qText: o.text,
@@ -44,7 +38,6 @@ function MatchingQuestion({ question, answer, setAnswer }) {
 
     const shuffledAnswers = useMemo(() => shuffle(pairs.map(p => ({ id: p.id, text: p.aText }))), [question.id]);
 
-    // selections: { [leftId]: rightId }
     const selections = answer?.matchSelections || {};
     const [activeLeft, setActiveLeft] = useState(null);
 
@@ -136,10 +129,6 @@ function MatchingQuestion({ question, answer, setAnswer }) {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WORD ORDER / DRAG & DROP RENDERER
-// Shows scrambled letter tiles; student taps to build the word in order.
-// ─────────────────────────────────────────────────────────────────────────────
 function WordOrderQuestion({ question, answer, setAnswer }) {
     const correctWord = question.options[0]?.text || '';
     const shuffledLetters = useMemo(() => shuffle(
@@ -213,9 +202,6 @@ function WordOrderQuestion({ question, answer, setAnswer }) {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COLOR MATCH RENDERER — image-aware
-// ─────────────────────────────────────────────────────────────────────────────
 function ColorMatchQuestion({ question, answers, onSelect }) {
     const selected = answers?.selectedOptionId;
     return (
@@ -243,9 +229,6 @@ function ColorMatchQuestion({ question, answers, onSelect }) {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN QUIZ PAGE
-// ─────────────────────────────────────────────────────────────────────────────
 export default function QuizPage() {
     const { quizId } = useParams();
     const navigate = useNavigate();
@@ -300,7 +283,6 @@ export default function QuizPage() {
                 let selectedOptionIds = a.selectedOptionIds || [];
                 let textResponse = a.textResponse || null;
 
-                // For MATCHING, encode selections as JSON string for submission
                 if (q.type === 'MATCHING') {
                     textResponse = JSON.stringify(a.matchSelections || {});
                 }
@@ -439,7 +421,6 @@ export default function QuizPage() {
                 );
 
             default: {
-                // SINGLE_CHOICE
                 return (
                     <div className="space-y-3">
                         {question.options.map(opt => {
@@ -525,7 +506,7 @@ export default function QuizPage() {
                         </button>
                     ) : (
                         <button onClick={handleSubmit} disabled={submitting}
-                            className="flex-1 kid-btn bg-[#f26c24] shadow-[0_6px_0_0_#c2410c] disabled:opacity-50">
+                            className="flex-1 kid-btn lg:mx-64 bg-[#f26c24] shadow-[0_6px_0_0_#c2410c] disabled:opacity-50">
                             <FaCircleCheck className="w-5 h-5" />
                             {submitting ? 'SUBMITTING...' : 'FINISH'}
                         </button>
