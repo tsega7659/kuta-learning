@@ -4,14 +4,14 @@ import api from '../../services/api';
 import {
     PlusIcon, PencilIcon, PlayCircleIcon, DocumentCheckIcon,
     QuestionMarkCircleIcon, QueueListIcon, ChevronRightIcon, XMarkIcon,
-    ArrowLeftIcon, PhotoIcon
+    ArrowLeftIcon, PhotoIcon, TrashIcon, CheckIcon
 } from '@heroicons/react/24/outline';
 import AdminLessonModal from './components/AdminLessonModal';
 import AdminQuizBuilder from './components/AdminQuizBuilder';
 
 const GRADE_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-// Cover image upload sub-component
+// ──── Cover image upload sub-component ────
 function CoverUpload({ preview, onFile }) {
     const ref = useRef(null);
     return (
@@ -35,17 +35,18 @@ function CoverUpload({ preview, onFile }) {
     );
 }
 
+// ──── Generic modal wrapper ────
 function Modal({ title, onClose, children }) {
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
-                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 shrink-0">
                     <h2 className="text-xl font-extrabold text-[#0B3A63]">{title}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
                         <XMarkIcon className="w-6 h-6" />
                     </button>
                 </div>
-                <div className="p-6">{children}</div>
+                <div className="p-6 overflow-y-auto">{children}</div>
             </div>
         </div>
     );
@@ -63,36 +64,32 @@ export default function AdminCourses() {
 
     // ── Modals ──
     const [lessonModalCtx, setLessonModalCtx] = useState(null);
-    const [quizModalCtx, setQuizModalCtx] = useState(null); // { chapterId, topicId, topicName }
-    const [showCourseModal, setShowCourseModal] = useState(false);
-    const [showChapterModal, setShowChapterModal] = useState(false);
-    const [showTopicModal, setShowTopicModal] = useState(false);
-    const [showLessonModal, setShowLessonModal] = useState(false);
+    const [quizModalCtx, setQuizModalCtx] = useState(null);
     const [saving, setSaving] = useState(false);
 
-    // Forms + cover files
+    // ── Unified modal state (null = closed) ──
+    // type: 'course' | 'chapter' | 'topic' | 'lesson'
+    // mode: 'create' | 'edit'
+    // item: existing data when editing
+    const [activeModal, setActiveModal] = useState(null);
+
+    // ── Form states ──
     const [courseForm, setCourseForm] = useState({ title: '', description: '', gradeLevel: 1 });
     const [chapterForm, setChapterForm] = useState({ title: '', description: '' });
     const [topicForm, setTopicForm] = useState({ title: '', description: '' });
     const [lessonForm, setLessonForm] = useState({ title: '', description: '' });
 
-    const [courseCoverFile, setCourseCoverFile] = useState(null);
-    const [courseCoverPreview, setCourseCoverPreview] = useState(null);
-    const [chapterCoverFile, setChapterCoverFile] = useState(null);
-    const [chapterCoverPreview, setChapterCoverPreview] = useState(null);
-    const [topicCoverFile, setTopicCoverFile] = useState(null);
-    const [topicCoverPreview, setTopicCoverPreview] = useState(null);
-    const [lessonCoverFile, setLessonCoverFile] = useState(null);
-    const [lessonCoverPreview, setLessonCoverPreview] = useState(null);
+    const [coverFile, setCoverFile] = useState(null);
+    const [coverPreview, setCoverPreview] = useState(null);
 
-    // File preview helper
-    const setFileWithPreview = (file, setFile, setPreview) => {
-        setFile(file);
-        if (file) setPreview(URL.createObjectURL(file));
-        else setPreview(null);
+    const resetCover = () => { setCoverFile(null); setCoverPreview(null); };
+
+    const setFileWithPreview = (file) => {
+        setCoverFile(file);
+        if (file) setCoverPreview(URL.createObjectURL(file));
+        else setCoverPreview(null);
     };
 
-    // Upload helper
     const uploadFile = async (file) => {
         if (!file) return null;
         const fd = new FormData();
@@ -101,7 +98,29 @@ export default function AdminCourses() {
         return res.data.url;
     };
 
-    // ── Load courses list ──
+    // ── Open modal helpers ──
+    const openCreate = (type) => {
+        resetCover();
+        if (type === 'course') setCourseForm({ title: '', description: '', gradeLevel: 1 });
+        if (type === 'chapter') setChapterForm({ title: '', description: '' });
+        if (type === 'topic') setTopicForm({ title: '', description: '' });
+        if (type === 'lesson') setLessonForm({ title: '', description: '' });
+        setActiveModal({ type, mode: 'create' });
+    };
+
+    const openEdit = (type, item) => {
+        resetCover();
+        if (type === 'course') setCourseForm({ title: item.title || '', description: item.description || '', gradeLevel: item.gradeLevel || 1 });
+        if (type === 'chapter') setChapterForm({ title: item.title || '', description: item.description || '' });
+        if (type === 'topic') setTopicForm({ title: item.title || '', description: item.description || '' });
+        if (type === 'lesson') setLessonForm({ title: item.title || '', description: item.description || '' });
+        if (item.coverImage) setCoverPreview(item.coverImage);
+        setActiveModal({ type, mode: 'edit', item });
+    };
+
+    const closeModal = () => { setActiveModal(null); resetCover(); };
+
+    // ── Load & refresh ──
     const fetchCourses = async () => {
         setLoadingCourses(true);
         try {
@@ -109,29 +128,22 @@ export default function AdminCourses() {
             setCourses(data);
             if (location.state?.courseId) {
                 setSelCourseId(location.state.courseId);
-            } else if (data.length > 0) {
+            } else if (!selCourseId && data.length > 0) {
                 setSelCourseId(data[0].id);
             }
         } catch (err) { console.error(err); }
         finally { setLoadingCourses(false); }
     };
+
     useEffect(() => { fetchCourses(); }, []);
 
     useEffect(() => {
-        if (location.state?.courseId && courses.length > 0) {
-            setSelCourseId(location.state.courseId);
-        }
+        if (location.state?.courseId && courses.length > 0) setSelCourseId(location.state.courseId);
     }, [location.state?.courseId, courses]);
 
-    // ── Load course detail on selection ──
     const fetchCourseDetail = async (id, keepNav = false) => {
         setLoadingDetail(true);
-        // Only reset navigation when explicitly switching courses
-        if (!keepNav) {
-            setCourseDetail(null);
-            setSelectedChapterId(null);
-            setSelectedTopicId(null);
-        }
+        if (!keepNav) { setCourseDetail(null); setSelectedChapterId(null); setSelectedTopicId(null); }
         try {
             const { data } = await api.get(`/courses/${id}`);
             setCourseDetail(data);
@@ -139,65 +151,120 @@ export default function AdminCourses() {
         finally { setLoadingDetail(false); }
     };
 
-    useEffect(() => {
-        if (selCourseId) fetchCourseDetail(selCourseId);
-    }, [selCourseId]);
+    useEffect(() => { if (selCourseId) fetchCourseDetail(selCourseId); }, [selCourseId]);
 
     const activeChapter = courseDetail?.chapters?.find(c => c.id === selectedChapterId);
     const activeTopic = activeChapter?.topics?.find(t => t.id === selectedTopicId);
 
-    // ── CRUD handlers ──
-    const handleCreateCourse = async (e) => {
+    // ── Course handlers ──
+    const handleSaveCourse = async (e) => {
         e.preventDefault(); setSaving(true);
         try {
-            const coverImage = await uploadFile(courseCoverFile);
-            await api.post('/courses', { ...courseForm, ...(coverImage && { coverImage }) });
-            setShowCourseModal(false);
-            setCourseForm({ title: '', description: '', gradeLevel: 1 });
-            setCourseCoverFile(null); setCourseCoverPreview(null);
+            const coverImage = await uploadFile(coverFile);
+            const payload = { ...courseForm, ...(coverImage && { coverImage }) };
+            if (activeModal.mode === 'edit') {
+                await api.put(`/courses/${activeModal.item.id}`, payload);
+                if (activeModal.item.id === selCourseId) await fetchCourseDetail(selCourseId, true);
+            } else {
+                await api.post('/courses', payload);
+            }
+            closeModal();
             await fetchCourses();
-        } catch { alert('Failed to create course'); }
+        } catch { alert('Failed to save course'); }
         finally { setSaving(false); }
     };
 
-    const handleCreateChapter = async (e) => {
+    // ── Chapter handlers ──
+    const handleSaveChapter = async (e) => {
         e.preventDefault(); setSaving(true);
         try {
-            const coverImage = await uploadFile(chapterCoverFile);
-            await api.post(`/courses/${selCourseId}/chapters`, { ...chapterForm, ...(coverImage && { coverImage }) });
-            setShowChapterModal(false);
-            setChapterForm({ title: '', description: '' });
-            setChapterCoverFile(null); setChapterCoverPreview(null);
+            const coverImage = await uploadFile(coverFile);
+            const payload = { ...chapterForm, ...(coverImage && { coverImage }) };
+            if (activeModal.mode === 'edit') {
+                await api.put(`/courses/${selCourseId}/chapters/${activeModal.item.id}`, payload);
+            } else {
+                await api.post(`/courses/${selCourseId}/chapters`, payload);
+            }
+            closeModal();
             await fetchCourseDetail(selCourseId, true);
-        } catch { alert('Failed to create chapter'); }
+        } catch { alert('Failed to save chapter'); }
         finally { setSaving(false); }
     };
 
-    const handleCreateTopic = async (e) => {
+    // ── Topic handlers ──
+    const handleSaveTopic = async (e) => {
         e.preventDefault(); setSaving(true);
         try {
-            const coverImage = await uploadFile(topicCoverFile);
-            await api.post(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics`, { ...topicForm, ...(coverImage && { coverImage }) });
-            setShowTopicModal(false);
-            setTopicForm({ title: '', description: '' });
-            setTopicCoverFile(null); setTopicCoverPreview(null);
+            const coverImage = await uploadFile(coverFile);
+            const payload = { ...topicForm, ...(coverImage && { coverImage }) };
+            if (activeModal.mode === 'edit') {
+                await api.put(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics/${activeModal.item.id}`, payload);
+            } else {
+                await api.post(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics`, payload);
+            }
+            closeModal();
             await fetchCourseDetail(selCourseId, true);
-        } catch { alert('Failed to create topic'); }
+        } catch { alert('Failed to save topic'); }
         finally { setSaving(false); }
     };
 
-    const handleCreateLesson = async (e) => {
+    // ── Lesson handlers ──
+    const handleSaveLesson = async (e) => {
         e.preventDefault(); setSaving(true);
         try {
-            const coverImage = await uploadFile(lessonCoverFile);
-            await api.post(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics/${selectedTopicId}/lessons`, { ...lessonForm, ...(coverImage && { coverImage }) });
-            setShowLessonModal(false);
-            setLessonForm({ title: '', description: '' });
-            setLessonCoverFile(null); setLessonCoverPreview(null);
+            const coverImage = await uploadFile(coverFile);
+            const payload = { ...lessonForm, ...(coverImage && { coverImage }) };
+            if (activeModal.mode === 'edit') {
+                await api.put(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics/${selectedTopicId}/lessons/${activeModal.item.id}`, payload);
+            } else {
+                await api.post(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics/${selectedTopicId}/lessons`, payload);
+            }
+            closeModal();
             await fetchCourseDetail(selCourseId, true);
-        } catch { alert('Failed to create lesson'); }
+        } catch { alert('Failed to save lesson'); }
         finally { setSaving(false); }
     };
+
+    // ── Delete handlers ──
+    const handleDeleteChapter = async (ch) => {
+        if (!confirm(`Delete chapter "${ch.title}" and ALL its content? This is irreversible.`)) return;
+        try {
+            await api.delete(`/courses/${selCourseId}/chapters/${ch.id}`);
+            if (selectedChapterId === ch.id) setSelectedChapterId(null);
+            await fetchCourseDetail(selCourseId, true);
+        } catch { alert('Failed to delete chapter'); }
+    };
+
+    const handleDeleteTopic = async (topic) => {
+        if (!confirm(`Delete topic "${topic.title}" and ALL its content?`)) return;
+        try {
+            await api.delete(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics/${topic.id}`);
+            if (selectedTopicId === topic.id) setSelectedTopicId(null);
+            await fetchCourseDetail(selCourseId, true);
+        } catch { alert('Failed to delete topic'); }
+    };
+
+    const handleDeleteLesson = async (lesson) => {
+        if (!confirm(`Delete lesson "${lesson.title}"?`)) return;
+        try {
+            await api.delete(`/courses/${selCourseId}/chapters/${selectedChapterId}/topics/${selectedTopicId}/lessons/${lesson.id}`);
+            await fetchCourseDetail(selCourseId, true);
+        } catch { alert('Failed to delete lesson'); }
+    };
+
+    // ── Modal form body ──
+    const modalTitle = () => {
+        if (!activeModal) return '';
+        const labels = { course: 'Course', chapter: 'Chapter', topic: 'Topic', lesson: 'Lesson' };
+        return `${activeModal.mode === 'edit' ? 'Edit' : 'Add'} ${labels[activeModal.type]}`;
+    };
+
+    const modalHandler = () => {
+        const map = { course: handleSaveCourse, chapter: handleSaveChapter, topic: handleSaveTopic, lesson: handleSaveLesson };
+        return map[activeModal?.type];
+    };
+
+    const saveLabel = () => saving ? 'Saving...' : activeModal?.mode === 'edit' ? `Save Changes` : `Create ${activeModal?.type?.charAt(0).toUpperCase() + activeModal?.type?.slice(1)}`;
 
     return (
         <div className="p-8 font-sans text-gray-800">
@@ -209,7 +276,7 @@ export default function AdminCourses() {
                     <p className="text-gray-500 font-medium text-sm mt-1">Browse and manage your courses, chapters, topics and lessons.</p>
                 </div>
                 <button
-                    onClick={() => setShowCourseModal(true)}
+                    onClick={() => openCreate('course')}
                     className="flex items-center gap-2 px-5 py-2.5 bg-[#0F4C81] hover:bg-[#0B3A63] text-white font-bold rounded-xl shadow-sm transition text-sm"
                 >
                     <PlusIcon className="w-5 h-5" /> Create Course
@@ -222,14 +289,25 @@ export default function AdminCourses() {
                 {loadingCourses ? (
                     <span className="text-sm font-bold text-gray-400">Loading...</span>
                 ) : (
-                    <select
-                        value={selCourseId}
-                        onChange={e => setSelCourseId(e.target.value)}
-                        className="flex-1 max-w-sm p-2.5 border-2 border-gray-200 rounded-xl font-bold text-sm bg-gray-50 outline-none focus:border-[#0F4C81]"
-                    >
-                        {courses.length === 0 && <option value="">No Courses</option>}
-                        {courses.map(c => <option key={c.id} value={c.id}>{c.title} (Grade {c.gradeLevel})</option>)}
-                    </select>
+                    <div className="flex items-center gap-3 flex-1">
+                        <select
+                            value={selCourseId}
+                            onChange={e => setSelCourseId(e.target.value)}
+                            className="flex-1 max-w-sm p-2.5 border-2 border-gray-200 rounded-xl font-bold text-sm bg-gray-50 outline-none focus:border-[#0F4C81]"
+                        >
+                            {courses.length === 0 && <option value="">No Courses</option>}
+                            {courses.map(c => <option key={c.id} value={c.id}>{c.title} (Grade {c.gradeLevel})</option>)}
+                        </select>
+                        {selCourseId && courseDetail && (
+                            <button
+                                onClick={() => openEdit('course', courseDetail)}
+                                title="Edit course"
+                                className="p-2 hover:bg-blue-50 rounded-lg transition text-blue-500"
+                            >
+                                <PencilIcon className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -270,10 +348,10 @@ export default function AdminCourses() {
                                 )}
                             </div>
 
-                            {/* Context-sensitive Add button — TOP RIGHT */}
+                            {/* Context-sensitive buttons */}
                             {!selectedChapterId && (
                                 <button
-                                    onClick={() => setShowChapterModal(true)}
+                                    onClick={() => openCreate('chapter')}
                                     className="flex items-center gap-1.5 px-4 py-2 bg-[#0F4C81] text-white font-bold rounded-lg text-sm hover:bg-[#0B3A63] transition"
                                 >
                                     <PlusIcon className="w-4 h-4" /> Add Chapter
@@ -281,7 +359,7 @@ export default function AdminCourses() {
                             )}
                             {selectedChapterId && !selectedTopicId && (
                                 <button
-                                    onClick={() => setShowTopicModal(true)}
+                                    onClick={() => openCreate('topic')}
                                     className="flex items-center gap-1.5 px-4 py-2 bg-[#0F4C81] text-white font-bold rounded-lg text-sm hover:bg-[#0B3A63] transition"
                                 >
                                     <PlusIcon className="w-4 h-4" /> Add Topic
@@ -290,16 +368,16 @@ export default function AdminCourses() {
                             {selectedTopicId && (
                                 <div className="flex gap-2">
                                     <button
-                                        onClick={() => setShowLessonModal(true)}
+                                        onClick={() => openCreate('lesson')}
                                         className="flex items-center gap-1.5 px-4 py-2 bg-[#0F4C81] text-white font-bold rounded-lg text-sm hover:bg-[#0B3A63] transition"
                                     >
                                         <PlusIcon className="w-4 h-4" /> Add Lesson
                                     </button>
                                     <button
                                         onClick={() => setQuizModalCtx({ chapterId: selectedChapterId, topicId: selectedTopicId, topicName: activeTopic?.title })}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-white text-grey-500 font-bold rounded-lg text-sm hover:bg-purple-700 transition"
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-gray-600 text-white font-bold rounded-lg text-sm hover:bg-gray-700 transition"
                                     >
-                                        <PlusIcon className="w-4 h-4" /> Create Quiz
+                                        <PlusIcon className="w-4 h-4" /> Quiz Builder
                                     </button>
                                 </div>
                             )}
@@ -322,37 +400,50 @@ export default function AdminCourses() {
                             <div>
                                 <div className="grid grid-cols-12 bg-white border-b border-gray-100 px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                     <div className="col-span-1">#</div>
-                                    <div className="col-span-8">Chapter Name</div>
+                                    <div className="col-span-7">Chapter Name</div>
                                     <div className="col-span-2 text-center">Topics</div>
-                                    <div className="col-span-1" />
+                                    <div className="col-span-2 text-right">Actions</div>
                                 </div>
                                 {(courseDetail.chapters || []).length === 0 ? (
                                     <div className="py-20 text-center text-gray-400 font-bold">
                                         No chapters yet.<br />
-                                        <button onClick={() => setShowChapterModal(true)} className="mt-3 text-[#0F4C81] underline text-sm">+ Add the first chapter</button>
+                                        <button onClick={() => openCreate('chapter')} className="mt-3 text-[#0F4C81] underline text-sm">+ Add the first chapter</button>
                                     </div>
                                 ) : (
                                     (courseDetail.chapters || []).sort((a, b) => a.order - b.order).map((ch, idx) => (
                                         <div
                                             key={ch.id}
-                                            onClick={() => setSelectedChapterId(ch.id)}
                                             className="grid grid-cols-12 border-b border-gray-100 px-6 py-4 items-center hover:bg-blue-50 cursor-pointer transition group"
                                         >
-                                            <div className="col-span-1 font-black text-gray-300 group-hover:text-blue-300">#{ch.order || idx + 1}</div>
-                                            <div className="col-span-8 flex items-center gap-3">
+                                            <div className="col-span-1 font-black text-gray-300 group-hover:text-blue-300" onClick={() => setSelectedChapterId(ch.id)}>#{ch.order || idx + 1}</div>
+                                            <div className="col-span-7 flex items-center gap-3" onClick={() => setSelectedChapterId(ch.id)}>
                                                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-700 font-extrabold text-lg">📁</div>
                                                 <div>
                                                     <p className="font-extrabold text-[#0B3A63] text-base">{ch.title}</p>
                                                     <p className="text-xs font-bold text-gray-400 truncate max-w-md">{ch.description}</p>
                                                 </div>
                                             </div>
-                                            <div className="col-span-2 text-center">
+                                            <div className="col-span-2 text-center" onClick={() => setSelectedChapterId(ch.id)}>
                                                 <span className="px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-600">
                                                     {(ch.topics || []).length} Topics
                                                 </span>
                                             </div>
-                                            <div className="col-span-1 text-right">
-                                                <ChevronRightIcon className="w-5 h-5 text-gray-300 inline-block group-hover:text-blue-500 transition" />
+                                            <div className="col-span-2 flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); openEdit('chapter', ch); }}
+                                                    className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition"
+                                                    title="Edit chapter"
+                                                >
+                                                    <PencilIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); handleDeleteChapter(ch); }}
+                                                    className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                                                    title="Delete chapter"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                                <ChevronRightIcon className="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition" onClick={() => setSelectedChapterId(ch.id)} />
                                             </div>
                                         </div>
                                     ))
@@ -379,25 +470,43 @@ export default function AdminCourses() {
                                     {(activeChapter.topics || []).length === 0 ? (
                                         <div className="col-span-3 py-10 text-center text-gray-400 font-bold bg-white rounded-2xl border-2 border-dashed border-gray-200">
                                             No topics yet.
-                                            <button onClick={() => setShowTopicModal(true)} className="block mx-auto mt-2 text-[#0F4C81] underline text-sm">+ Add the first topic</button>
+                                            <button onClick={() => openCreate('topic')} className="block mx-auto mt-2 text-[#0F4C81] underline text-sm">+ Add the first topic</button>
                                         </div>
                                     ) : (
                                         (activeChapter.topics || []).sort((a, b) => a.order - b.order).map(topic => (
                                             <div
                                                 key={topic.id}
-                                                onClick={() => setSelectedTopicId(topic.id)}
-                                                className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer group flex flex-col"
+                                                className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-blue-300 transition cursor-pointer group flex flex-col relative"
                                             >
-                                                <span className="text-xs font-black text-blue-500 mb-2 block tracking-wider uppercase">Topic {topic.order}</span>
-                                                <h3 className="text-lg font-extrabold text-[#0B3A63] mb-2">{topic.title}</h3>
-                                                <p className="text-xs font-bold text-gray-400 line-clamp-2 flex-1">{topic.description}</p>
-                                                <div className="mt-5 pt-4 border-t border-gray-100 flex gap-4 text-xs font-bold text-gray-500">
-                                                    <span className="flex items-center gap-1 group-hover:text-blue-600 transition">
-                                                        <QueueListIcon className="w-4 h-4" /> {(topic.lessons || []).length} Lessons
-                                                    </span>
-                                                    <span className="flex items-center gap-1 group-hover:text-blue-600 transition">
-                                                        <QuestionMarkCircleIcon className="w-4 h-4" /> {(topic.quiz || []).length} Quizzes
-                                                    </span>
+                                                {/* Edit / Delete overlay buttons */}
+                                                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); openEdit('topic', topic); }}
+                                                        className="p-1.5 bg-white border border-gray-200 text-blue-400 hover:text-blue-600 rounded-lg shadow-sm transition"
+                                                        title="Edit topic"
+                                                    >
+                                                        <PencilIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); handleDeleteTopic(topic); }}
+                                                        className="p-1.5 bg-white border border-gray-200 text-red-300 hover:text-red-500 rounded-lg shadow-sm transition"
+                                                        title="Delete topic"
+                                                    >
+                                                        <TrashIcon className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                                <div onClick={() => setSelectedTopicId(topic.id)}>
+                                                    <span className="text-xs font-black text-blue-500 mb-2 block tracking-wider uppercase">Topic {topic.order}</span>
+                                                    <h3 className="text-lg font-extrabold text-[#0B3A63] mb-2 pr-14">{topic.title}</h3>
+                                                    <p className="text-xs font-bold text-gray-400 line-clamp-2 flex-1">{topic.description}</p>
+                                                    <div className="mt-5 pt-4 border-t border-gray-100 flex gap-4 text-xs font-bold text-gray-500">
+                                                        <span className="flex items-center gap-1 group-hover:text-blue-600 transition">
+                                                            <QueueListIcon className="w-4 h-4" /> {(topic.lessons || []).length} Lessons
+                                                        </span>
+                                                        <span className="flex items-center gap-1 group-hover:text-blue-600 transition">
+                                                            <QuestionMarkCircleIcon className="w-4 h-4" /> {(topic.quiz || []).length} Quizzes
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))
@@ -425,11 +534,12 @@ export default function AdminCourses() {
                                     {(activeTopic.lessons || []).length === 0 && (activeTopic.quiz || []).length === 0 && (
                                         <div className="py-10 text-center text-gray-400 font-bold bg-white rounded-2xl border-2 border-dashed border-gray-200">
                                             No lessons or quizzes yet.
-                                            <button onClick={() => setShowLessonModal(true)} className="block mx-auto mt-2 text-[#0F4C81] underline text-sm">+ Add a lesson</button>
+                                            <button onClick={() => openCreate('lesson')} className="block mx-auto mt-2 text-[#0F4C81] underline text-sm">+ Add a lesson</button>
                                         </div>
                                     )}
+
                                     {(activeTopic.lessons || []).sort((a, b) => a.order - b.order).map(l => (
-                                        <div key={`l-${l.id}`} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex items-center justify-between hover:border-blue-200 transition">
+                                        <div key={`l-${l.id}`} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex items-center justify-between hover:border-blue-200 transition group">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
                                                     <PlayCircleIcon className="w-6 h-6" />
@@ -439,18 +549,35 @@ export default function AdminCourses() {
                                                     <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded uppercase mt-1 inline-block">{(l.contents || []).length} Blocks</span>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => setLessonModalCtx({ lesson: l, chapterId: selectedChapterId, topicId: selectedTopicId })}
-                                                className="text-blue-500 font-bold text-xs hover:underline"
-                                            >
-                                                Manage Content
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => openEdit('lesson', l)}
+                                                    className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition opacity-0 group-hover:opacity-100"
+                                                    title="Edit lesson title/description"
+                                                >
+                                                    <PencilIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteLesson(l)}
+                                                    className="p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition opacity-0 group-hover:opacity-100"
+                                                    title="Delete lesson"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setLessonModalCtx({ lesson: l, chapterId: selectedChapterId, topicId: selectedTopicId })}
+                                                    className="text-blue-500 font-bold text-xs hover:underline px-3 py-1.5 bg-blue-50 rounded-lg"
+                                                >
+                                                    Manage Content →
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
+
                                     {(activeTopic.quiz || []).map(q => (
-                                        <div key={`q-${q.id}`} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex items-center justify-between hover:border-blue-200 transition">
+                                        <div key={`q-${q.id}`} className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex items-center justify-between hover:border-gray-200 transition">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
+                                                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-600">
                                                     <DocumentCheckIcon className="w-6 h-6" />
                                                 </div>
                                                 <div>
@@ -458,7 +585,12 @@ export default function AdminCourses() {
                                                     <span className="text-[10px] bg-gray-100 text-gray-500 font-bold px-2 py-0.5 rounded uppercase mt-1 inline-block">{q.passingScore}% pass mark</span>
                                                 </div>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-400">Quiz Builder →</span>
+                                            <button
+                                                onClick={() => setQuizModalCtx({ chapterId: selectedChapterId, topicId: selectedTopicId, topicName: activeTopic?.title })}
+                                                className="text-gray-500 font-bold text-xs hover:underline px-3 py-1.5 bg-gray-50 rounded-lg"
+                                            >
+                                                Edit Quiz →
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -496,127 +628,127 @@ export default function AdminCourses() {
                 />
             )}
 
-            {/* ────────── Other MODALS ────────── */}
+            {/* ── Unified Create / Edit Modal ── */}
+            {activeModal && (
+                <Modal title={modalTitle()} onClose={closeModal}>
+                    <form onSubmit={modalHandler()} className="space-y-4">
 
-            {showCourseModal && (
-                <Modal title="Create Course" onClose={() => setShowCourseModal(false)}>
-                    <form onSubmit={handleCreateCourse} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Course Title</label>
-                            <input
-                                required value={courseForm.title}
-                                onChange={e => setCourseForm(f => ({ ...f, title: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
-                                placeholder="e.g. Mathematics Grade 5"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
-                            <textarea
-                                value={courseForm.description}
-                                onChange={e => setCourseForm(f => ({ ...f, description: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
-                                placeholder="Short description..."
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Grade Level</label>
-                            <select
-                                value={courseForm.gradeLevel}
-                                onChange={e => setCourseForm(f => ({ ...f, gradeLevel: parseInt(e.target.value) }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
-                            >
-                                {GRADE_LEVELS.map(g => <option key={g} value={g}>Grade {g}</option>)}
-                            </select>
-                        </div>
-                        <CoverUpload preview={courseCoverPreview} onFile={f => setFileWithPreview(f, setCourseCoverFile, setCourseCoverPreview)} />
-                        <button type="submit" disabled={saving} className="w-full py-3 bg-[#0F4C81] text-white font-bold rounded-xl hover:bg-[#0B3A63] transition disabled:opacity-50">
-                            {saving ? 'Creating...' : 'Create Course'}
-                        </button>
-                    </form>
-                </Modal>
-            )}
+                        {/* Course fields */}
+                        {activeModal.type === 'course' && (
+                            <>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Course Title *</label>
+                                    <input
+                                        required value={courseForm.title}
+                                        onChange={e => setCourseForm(f => ({ ...f, title: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
+                                        placeholder="e.g. Mathematics Grade 5"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
+                                    <textarea
+                                        value={courseForm.description}
+                                        onChange={e => setCourseForm(f => ({ ...f, description: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
+                                        placeholder="Short description..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Grade Level</label>
+                                    <select
+                                        value={courseForm.gradeLevel}
+                                        onChange={e => setCourseForm(f => ({ ...f, gradeLevel: parseInt(e.target.value) }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
+                                    >
+                                        {GRADE_LEVELS.map(g => <option key={g} value={g}>Grade {g}</option>)}
+                                    </select>
+                                </div>
+                                <CoverUpload preview={coverPreview} onFile={setFileWithPreview} />
+                            </>
+                        )}
 
-            {showChapterModal && (
-                <Modal title="Add Chapter" onClose={() => setShowChapterModal(false)}>
-                    <form onSubmit={handleCreateChapter} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Chapter Title</label>
-                            <input
-                                required value={chapterForm.title}
-                                onChange={e => setChapterForm(f => ({ ...f, title: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
-                                placeholder="e.g. Unit 1: Introduction"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
-                            <textarea
-                                value={chapterForm.description}
-                                onChange={e => setChapterForm(f => ({ ...f, description: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
-                            />
-                        </div>
-                        <CoverUpload preview={chapterCoverPreview} onFile={f => setFileWithPreview(f, setChapterCoverFile, setChapterCoverPreview)} />
-                        <button type="submit" disabled={saving} className="w-full py-3 bg-[#0F4C81] text-white font-bold rounded-xl hover:bg-[#0B3A63] transition disabled:opacity-50">
-                            {saving ? 'Adding...' : 'Add Chapter'}
-                        </button>
-                    </form>
-                </Modal>
-            )}
+                        {/* Chapter fields */}
+                        {activeModal.type === 'chapter' && (
+                            <>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Chapter Title *</label>
+                                    <input
+                                        required value={chapterForm.title}
+                                        onChange={e => setChapterForm(f => ({ ...f, title: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
+                                        placeholder="e.g. Unit 1: Introduction"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
+                                    <textarea
+                                        value={chapterForm.description}
+                                        onChange={e => setChapterForm(f => ({ ...f, description: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
+                                    />
+                                </div>
+                                <CoverUpload preview={coverPreview} onFile={setFileWithPreview} />
+                            </>
+                        )}
 
-            {showTopicModal && (
-                <Modal title="Add Topic" onClose={() => setShowTopicModal(false)}>
-                    <form onSubmit={handleCreateTopic} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Topic Title</label>
-                            <input
-                                required value={topicForm.title}
-                                onChange={e => setTopicForm(f => ({ ...f, title: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
-                                placeholder="e.g. Lesson 1: Addition"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
-                            <textarea
-                                value={topicForm.description}
-                                onChange={e => setTopicForm(f => ({ ...f, description: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
-                            />
-                        </div>
-                        <CoverUpload preview={topicCoverPreview} onFile={f => setFileWithPreview(f, setTopicCoverFile, setTopicCoverPreview)} />
-                        <button type="submit" disabled={saving} className="w-full py-3 bg-[#0F4C81] text-white font-bold rounded-xl hover:bg-[#0B3A63] transition disabled:opacity-50">
-                            {saving ? 'Adding...' : 'Add Topic'}
-                        </button>
-                    </form>
-                </Modal>
-            )}
+                        {/* Topic fields */}
+                        {activeModal.type === 'topic' && (
+                            <>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Topic Title *</label>
+                                    <input
+                                        required value={topicForm.title}
+                                        onChange={e => setTopicForm(f => ({ ...f, title: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
+                                        placeholder="e.g. Lesson 1: Addition"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
+                                    <textarea
+                                        value={topicForm.description}
+                                        onChange={e => setTopicForm(f => ({ ...f, description: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
+                                    />
+                                </div>
+                                <CoverUpload preview={coverPreview} onFile={setFileWithPreview} />
+                            </>
+                        )}
 
-            {showLessonModal && (
-                <Modal title="Add Lesson" onClose={() => setShowLessonModal(false)}>
-                    <form onSubmit={handleCreateLesson} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Lesson Title</label>
-                            <input
-                                required value={lessonForm.title}
-                                onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
-                                placeholder='e.g. "What is a Fraction?"'
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
-                            <textarea
-                                value={lessonForm.description}
-                                onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
-                            />
-                        </div>
-                        <CoverUpload preview={lessonCoverPreview} onFile={f => setFileWithPreview(f, setLessonCoverFile, setLessonCoverPreview)} />
-                        <p className="text-xs font-bold text-gray-400">After creating the lesson, click "Manage Content" to add videos, text and images.</p>
-                        <button type="submit" disabled={saving} className="w-full py-3 bg-[#0F4C81] text-white font-bold rounded-xl hover:bg-[#0B3A63] transition disabled:opacity-50">
-                            {saving ? 'Adding...' : 'Add Lesson'}
+                        {/* Lesson fields */}
+                        {activeModal.type === 'lesson' && (
+                            <>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Lesson Title *</label>
+                                    <input
+                                        required value={lessonForm.title}
+                                        onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81]"
+                                        placeholder='e.g. "What is a Fraction?"'
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-500 mb-1 block">Description</label>
+                                    <textarea
+                                        value={lessonForm.description}
+                                        onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))}
+                                        className="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-sm outline-none focus:border-[#0F4C81] resize-none h-20"
+                                    />
+                                </div>
+                                <CoverUpload preview={coverPreview} onFile={setFileWithPreview} />
+                                {activeModal.mode === 'create' && (
+                                    <p className="text-xs font-bold text-gray-400">After creating the lesson, click "Manage Content" to add videos, text and images.</p>
+                                )}
+                            </>
+                        )}
+
+                        <button type="submit" disabled={saving} className="w-full py-3 bg-[#0F4C81] text-white font-bold rounded-xl hover:bg-[#0B3A63] transition disabled:opacity-50 flex items-center justify-center gap-2">
+                            {saving ? (
+                                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving...</>
+                            ) : (
+                                <><CheckIcon className="w-4 h-4" /> {saveLabel()}</>
+                            )}
                         </button>
                     </form>
                 </Modal>

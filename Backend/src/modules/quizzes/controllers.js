@@ -59,9 +59,9 @@ const sanitizeForStudent = (quiz) => {
 };
 
 // Fetch a quiz by topicId, with questions+options ordered.
-const fetchQuizByTopic = async (topicId, includeAnswers = false) => {
+const fetchQuizByTopic = async (topicId, quizType = "QUIZ", includeAnswers = false) => {
     return prisma.quiz.findFirst({
-        where: { topicId },
+        where: { topicId, quizType },
         include: {
             questions: {
                 orderBy: { order: "asc" },
@@ -100,9 +100,15 @@ const areAllLessonsCompleted = async (topicId, studentId) => {
 // GET /api/.../topics/:topicId/quiz
 export const getQuiz = async (req, res) => {
     try {
-        const quiz = await fetchQuizByTopic(req.params.topicId);
+        const quizType = req.isBank ? "BANK" : "QUIZ";
+        const quiz = await fetchQuizByTopic(req.params.topicId, quizType);
 
-        if (!quiz) return res.status(404).json({ message: "Quiz not found for this topic" });
+        if (!quiz) {
+            if (req.isBank) {
+                return res.json({ id: null, title: "Question Bank", passingScore: 60, questions: [] });
+            }
+            return res.status(404).json({ message: "Quiz not found for this topic" });
+        }
 
         // Hide correct answers for students
         if (req.user.role === "STUDENT") {
@@ -163,7 +169,8 @@ export const createQuiz = async (req, res) => {
                 title: String(title).trim(),
                 description: description || null,
                 passingScore: score,
-                topicId: req.params.topicId
+                topicId: req.params.topicId,
+                quizType: req.isBank ? "BANK" : "QUIZ"
             }
         });
         res.status(201).json(quiz);
@@ -633,8 +640,8 @@ export const getAttempt = async (req, res) => {
 // GET /api/.../topics/:topicId/quiz/attempts
 export const getMyAttempts = async (req, res) => {
     try {
-        const quiz = await prisma.quiz.findUnique({
-            where: { topicId: req.params.topicId },
+        const quiz = await prisma.quiz.findFirst({
+            where: { topicId: req.params.topicId, quizType: "QUIZ" },
             select: { id: true }
         });
         if (!quiz) return res.json([]);

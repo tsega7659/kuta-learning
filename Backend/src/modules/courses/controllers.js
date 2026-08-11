@@ -10,7 +10,8 @@ export const getAllCourses = async (req, res) => {
                     include: {
                         topics: {
                             include: {
-                                lessons: { select: { id: true } }
+                                lessons: { select: { id: true } },
+                                quiz: { where: { quizType: "QUIZ" }, select: { id: true, title: true, passingScore: true } }
                             }
                         }
                     }
@@ -26,28 +27,40 @@ export const getAllCourses = async (req, res) => {
                     .flatMap(t => t.lessons)
                     .map(l => l.id);
 
-                if (lessonIds.length === 0) {
-                    return {
-                        id: course.id,
-                        title: course.title,
-                        description: course.description,
-                        coverImage: course.coverImage,
-                        gradeLevel: course.gradeLevel,
-                        createdAt: course.createdAt,
-                        updatedAt: course.updatedAt,
-                        progressPercentage: 0
-                    };
+                const courseQuizzes = course.chapters
+                    .flatMap(c => c.topics)
+                    .flatMap(t => t.quiz);
+
+                const quizIds = courseQuizzes.map(q => q.id);
+
+                let completedCount = 0;
+                if (lessonIds.length > 0) {
+                    completedCount = await prisma.lessonProgress.count({
+                        where: { studentId, lessonId: { in: lessonIds }, completed: true }
+                    });
                 }
 
-                const completedCount = await prisma.lessonProgress.count({
-                    where: {
-                        studentId,
-                        lessonId: { in: lessonIds },
-                        completed: true
-                    }
+                // Fetch best attempt for each quiz
+                const attempts = quizIds.length > 0 ? await prisma.quizAttempt.findMany({
+                    where: { studentId, quizId: { in: quizIds }, submittedAt: { not: null } },
+                    orderBy: { score: 'desc' }
+                }) : [];
+
+                const enrichedQuizzes = courseQuizzes.map(q => {
+                    const bestAttempt = attempts.find(a => a.quizId === q.id);
+                    return {
+                        id: q.id,
+                        title: q.title,
+                        passingScore: q.passingScore,
+                        score: bestAttempt ? bestAttempt.score : null,
+                        maxScore: bestAttempt ? bestAttempt.maxScore : null,
+                        passed: bestAttempt ? bestAttempt.passed : false,
+                        attempted: !!bestAttempt
+                    };
                 });
 
-                const progressPercentage = Math.round((completedCount / lessonIds.length) * 100);
+                const progressPercentage = lessonIds.length > 0 ? Math.round((completedCount / lessonIds.length) * 100) : 0;
+
                 return {
                     id: course.id,
                     title: course.title,
@@ -56,7 +69,10 @@ export const getAllCourses = async (req, res) => {
                     gradeLevel: course.gradeLevel,
                     createdAt: course.createdAt,
                     updatedAt: course.updatedAt,
-                    progressPercentage
+                    progressPercentage,
+                    totalLessons: lessonIds.length,
+                    completedLessons: completedCount,
+                    quizzes: enrichedQuizzes
                 };
             }));
             return res.json(enrichedCourses);
@@ -94,6 +110,7 @@ export const getCourseById = async (req, res) => {
                                     orderBy: { order: "asc" }
                                 },
                                 quiz: {
+                                    where: { quizType: "QUIZ" },
                                     orderBy: { order: "asc" },
                                     select: { id: true, title: true, passingScore: true, order: true }
                                 }

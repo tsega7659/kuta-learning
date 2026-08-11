@@ -73,6 +73,7 @@ export const getPracticeTopics = async (req, res) => {
                     include: { course: true }
                 },
                 quiz: {
+                    where: { quizType: "BANK" },
                     include: { questions: { select: { id: true } } }
                 }
             }
@@ -112,6 +113,7 @@ export const startPracticeModule = async (req, res) => {
             where: { id: topicId },
             include: {
                 quiz: {
+                    where: { quizType: "BANK" },
                     include: {
                         questions: {
                             include: { options: true }
@@ -348,7 +350,7 @@ export const getPreviewQuestions = async (req, res) => {
         const { topicIds } = req.body;
         if (!topicIds || !Array.isArray(topicIds)) return res.json([]);
         const questions = await prisma.question.findMany({
-            where: { quiz: { topicId: { in: topicIds } } },
+            where: { quiz: { topicId: { in: topicIds }, quizType: "BANK" } },
             include: { options: true }
         });
         res.json(questions);

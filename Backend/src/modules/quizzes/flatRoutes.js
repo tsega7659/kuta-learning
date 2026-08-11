@@ -165,8 +165,8 @@ router.post("/:quizId/submit", authenticateToken, async (req, res) => {
 // GET /api/quizzes/topic/:topicId — get quiz by topicId (for student after finishing a topic)
 router.get("/topic/:topicId", authenticateToken, async (req, res) => {
     try {
-        const quiz = await prisma.quiz.findUnique({
-            where: { topicId: req.params.topicId },
+        const quiz = await prisma.quiz.findFirst({
+            where: { topicId: req.params.topicId, quizType: "QUIZ" },
             include: {
                 questions: {
                     orderBy: { order: "asc" },

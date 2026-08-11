@@ -16,7 +16,7 @@ const QUESTION_TYPES = [
 ];
 
 const TYPE_ICONS = QUESTION_TYPES.reduce((acc, t) => { acc[t.value] = t.icon; return acc; }, {});
-export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicName, onClose, defaultOpenMode }) {
+export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicName, onClose, defaultOpenMode, quizType = "quiz" }) {
     const [quiz, setQuiz] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -49,7 +49,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         ],
     });
 
-    const quizUrl = `/courses/${courseId}/chapters/${chapterId}/topics/${topicId}/quiz`;
+    const quizUrl = `/courses/${courseId}/chapters/${chapterId}/topics/${topicId}/${quizType}`;
 
     const fetchQuiz = async () => {
         const res = await api.get(quizUrl);
@@ -68,13 +68,11 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
         const init = async () => {
             try {
                 const data = await fetchQuiz();
-                if (data && defaultOpenMode === 'question') {
-                    // wait a tick then open modal
+                if (data?.id && defaultOpenMode === 'question') {
+                    // Bank already initialized
                     setTimeout(() => openAddQuestion(), 100);
-                }
-            } catch (err) {
-                // If not found and user wants to add question directly, automatically create a holding quiz/bank
-                if (defaultOpenMode === 'question') {
+                } else if (!data?.id && defaultOpenMode === 'question') {
+                    // Virtual bank shell, auto-create actual DB record
                     try {
                         const newQuizRes = await api.post(quizUrl, {
                             title: `${topicName} Question Bank`,
@@ -85,10 +83,12 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                         setQuizForm({ title: newQuizRes.data.title, description: newQuizRes.data.description, passingScore: 60 });
                         setTimeout(() => openAddQuestion(), 100);
                     } catch (e) {
-                        console.error('Failed to auto-create quiz', e);
+                        console.error('Failed to auto-create bank', e);
                     }
-                } else {
-                    console.error('Quiz not found', err);
+                }
+            } catch (err) {
+                if (defaultOpenMode !== 'question') {
+                    console.warn('Quiz not initialized yet', err);
                 }
             } finally {
                 setLoading(false);
@@ -380,7 +380,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
 
                 <div className="flex-1 overflow-y-auto p-5 space-y-6">
                     {/* ── Quiz Metadata (Hidden in Question Bank Mode) ── */}
-                    {!quiz && defaultOpenMode !== 'question' && (
+                    {!quiz?.id && defaultOpenMode !== 'question' && (
                         <form onSubmit={handleCreateQuiz} autoComplete="off" className="bg-blue-50/50 border border-blue-100 rounded-3xl p-5 space-y-4">
                             <h3 className="font-black text-[#0B3A63]">Create a Quiz</h3>
                             <div>
@@ -429,7 +429,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                         </form>
                     )}
 
-                    {quiz && (
+                    {quiz?.id && (
                         <>
                             {/* Quiz meta view/edit */}
                             {defaultOpenMode !== 'question' && (
@@ -554,7 +554,7 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                 </div>
 
                 {/* ── Question Form Modal (nested) ── */}
-                {showQuestionForm && quiz && (
+                {showQuestionForm && quiz?.id && (
                     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
                         <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                             <div className="bg-gray-50 border-b border-gray-100 p-4 flex justify-between items-center">
@@ -724,72 +724,70 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
                                                             key={idx}
                                                             type="button"
                                                             onClick={() => setOption(idx, 'isCorrect', true)}
-                                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left font-bold transition ${
-                                                                opt.isCorrect
-                                                                    ? 'border-green-500 bg-green-50 text-green-700'
-                                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                                                            }`}
+                                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left font-bold transition ${opt.isCorrect
+                                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                                                }`}
                                                         >
-                                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                                                                opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
-                                                            }`}>✓</span>
+                                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'
+                                                                }`}>✓</span>
                                                             {opt.text || (idx === 0 ? 'True' : 'False')}
                                                             {opt.isCorrect && <span className="ml-auto text-[11px] font-extrabold uppercase text-green-600">Correct Answer</span>}
                                                         </button>
                                                     ))
                                                 ) : (
-                                                questionForm.options.map((opt, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setOption(idx, 'isCorrect', !opt.isCorrect)}
-                                                            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                            title="Mark as correct"
-                                                        >✓</button>
-                                                        <input
-                                                            value={opt.text}
-                                                            onChange={e => setOption(idx, 'text', e.target.value)}
-                                                            placeholder={
-                                                                questionForm.type === 'TRUE_FALSE' ? (idx === 0 ? 'True' : 'False') :
-                                                                    questionForm.type === 'COLOR_MATCH' ? `Label (optional if image uploaded)` :
-                                                                        `Option ${idx + 1}`
-                                                            }
-                                                            className="flex-1 px-3 py-2.5 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
-                                                            required={
-                                                                // COLOR_MATCH: text not required if an image is selected/exists
-                                                                questionForm.type === 'COLOR_MATCH'
-                                                                    ? !(opt.imageFile || opt.imageUrl)
-                                                                    : true
-                                                            }
-                                                        />
-                                                        {/* Image upload — always shown for COLOR_MATCH, hidden for TRUE_FALSE */}
-                                                        {questionForm.type !== 'TRUE_FALSE' && (
-                                                            <div className="flex items-center gap-1">
-                                                                {(opt.imageUrl && !opt.imageFile) && (
-                                                                    <img src={opt.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover border border-gray-200" />
-                                                                )}
-                                                                <input
-                                                                    type="file"
-                                                                    accept="image/*"
-                                                                    onChange={e => {
-                                                                        const file = e.target.files?.[0] || null;
-                                                                        setOption(idx, 'imageFile', file);
-                                                                        if (file) setOption(idx, 'imagePreview', URL.createObjectURL(file));
-                                                                    }}
-                                                                    className="text-xs text-gray-500 max-w-[100px]"
-                                                                />
-                                                                {opt.imageFile && opt.imagePreview && (
-                                                                    <img src={opt.imagePreview} alt="" className="w-8 h-8 rounded-lg object-cover border border-orange-200" />
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        {questionForm.type !== 'TRUE_FALSE' && questionForm.options.length > 2 && (
-                                                            <button type="button" onClick={() => removeOption(idx)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                                                                <TrashIcon className="w-4 h-4" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ))
+                                                    questionForm.options.map((opt, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setOption(idx, 'isCorrect', !opt.isCorrect)}
+                                                                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition ${opt.isCorrect ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                title="Mark as correct"
+                                                            >✓</button>
+                                                            <input
+                                                                value={opt.text}
+                                                                onChange={e => setOption(idx, 'text', e.target.value)}
+                                                                placeholder={
+                                                                    questionForm.type === 'TRUE_FALSE' ? (idx === 0 ? 'True' : 'False') :
+                                                                        questionForm.type === 'COLOR_MATCH' ? `Label (optional if image uploaded)` :
+                                                                            `Option ${idx + 1}`
+                                                                }
+                                                                className="flex-1 px-3 py-2.5 rounded-xl border-2 border-gray-100 focus:border-[#0F4C81] outline-none text-sm font-medium"
+                                                                required={
+                                                                    // COLOR_MATCH: text not required if an image is selected/exists
+                                                                    questionForm.type === 'COLOR_MATCH'
+                                                                        ? !(opt.imageFile || opt.imageUrl)
+                                                                        : true
+                                                                }
+                                                            />
+                                                            {/* Image upload — always shown for COLOR_MATCH, hidden for TRUE_FALSE */}
+                                                            {questionForm.type !== 'TRUE_FALSE' && (
+                                                                <div className="flex items-center gap-1">
+                                                                    {(opt.imageUrl && !opt.imageFile) && (
+                                                                        <img src={opt.imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover border border-gray-200" />
+                                                                    )}
+                                                                    <input
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={e => {
+                                                                            const file = e.target.files?.[0] || null;
+                                                                            setOption(idx, 'imageFile', file);
+                                                                            if (file) setOption(idx, 'imagePreview', URL.createObjectURL(file));
+                                                                        }}
+                                                                        className="text-xs text-gray-500 max-w-[100px]"
+                                                                    />
+                                                                    {opt.imageFile && opt.imagePreview && (
+                                                                        <img src={opt.imagePreview} alt="" className="w-8 h-8 rounded-lg object-cover border border-orange-200" />
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            {questionForm.type !== 'TRUE_FALSE' && questionForm.options.length > 2 && (
+                                                                <button type="button" onClick={() => removeOption(idx)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                                                                    <TrashIcon className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))
                                                 )}
                                             </div>
                                             <p className="text-[11px] text-gray-400 font-medium mt-2">

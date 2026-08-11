@@ -45,9 +45,14 @@ export const createChapter = async (req, res) => {
 export const updateChapter = async (req, res) => {
     const { title, description, coverImage, order } = req.body;
     try {
+        const updateData = { title, description };
+        if (coverImage !== undefined) updateData.coverImage = coverImage;
+        const finalOrder = parseInt(order);
+        if (!isNaN(finalOrder)) updateData.order = finalOrder;
+
         const chapter = await prisma.chapter.update({
             where: { id: req.params.id },
-            data: { title, description, coverImage, order: parseInt(order) },
+            data: updateData,
         });
         res.json(chapter);
     } catch (err) {

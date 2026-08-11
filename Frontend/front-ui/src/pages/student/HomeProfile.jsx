@@ -10,6 +10,7 @@ export default function HomeProfile() {
     const [showGate, setShowGate] = useState(false);
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [expandedCourse, setExpandedCourse] = useState(null);
 
     useEffect(() => {
         api.get('/courses')
@@ -105,31 +106,73 @@ export default function HomeProfile() {
                             {courses.map((course) => {
                                 const progress = Math.max(0, Math.min(100, Number(course.progressPercentage || 0)));
                                 const isDone = progress === 100;
+                                const isExpanded = expandedCourse === course.id;
+
                                 return (
-                                    <button
-                                        key={course.id}
-                                        type="button"
-                                        onClick={() => navigate(`/student/courses/${course.id}`)}
-                                        className="w-full text-left rounded-2xl bg-gray-50 p-3 hover:bg-blue-50 transition active:scale-[0.98]"
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="font-extrabold text-kidText text-[14px] truncate pr-2">{course.title}</span>
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                {isDone ? (
-                                                    <FaCircleCheck className="w-4 h-4 text-green-500" />
-                                                ) : progress > 0 ? (
-                                                    <FaStar className="w-4 h-4 text-orange-400" />
-                                                ) : null}
-                                                <span className="text-[12px] font-bold text-gray-500">{progress}%</span>
+                                    <div key={course.id} className="rounded-2xl bg-gray-50 overflow-hidden border border-gray-100 mb-3 hover:border-blue-200 transition-all">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+                                            className="w-full text-left p-4 pb-3 flex flex-col justify-center active:bg-gray-100 transition-colors"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-extrabold text-kidText text-[14px] truncate pr-2">{course.title}</span>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {isDone ? (
+                                                        <FaCircleCheck className="w-4 h-4 text-green-500" />
+                                                    ) : progress > 0 ? (
+                                                        <FaStar className="w-4 h-4 text-orange-400" />
+                                                    ) : null}
+                                                    <span className="text-[12px] font-bold text-gray-500">{progress}%</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full ${isDone ? 'bg-green-500' : 'bg-blue-500'}`}
-                                                style={{ width: `${progress}%` }}
-                                            />
-                                        </div>
-                                    </button>
+                                            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full ${isDone ? 'bg-green-500' : 'bg-blue-500'}`}
+                                                    style={{ width: `${progress}%` }}
+                                                />
+                                            </div>
+                                        </button>
+
+                                        {/* Expanded Details */}
+                                        {isExpanded && (
+                                            <div className="px-4 pb-4 animate-fade-in text-sm">
+                                                <div className="bg-white rounded-xl p-3 mb-3 border border-gray-100 flex items-center justify-between shadow-sm">
+                                                    <div className="flex items-center gap-2 text-gray-500 font-bold text-xs uppercase tracking-wider">
+                                                        <FaBook className="text-blue-500" /> Lessons
+                                                    </div>
+                                                    <span className="font-black text-[#0B3A63]">{course.completedLessons || 0} / {course.totalLessons || 0}</span>
+                                                </div>
+
+                                                {(course.quizzes || []).length > 0 && (
+                                                    <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm space-y-2 mb-3">
+                                                        <div className="text-gray-500 font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-2">
+                                                            <FaStar className="text-purple-500" /> Quizzes
+                                                        </div>
+                                                        {course.quizzes.map((quiz, qIdx) => (
+                                                            <div key={quiz.id || qIdx} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg text-xs font-bold border border-gray-100">
+                                                                <span className="text-gray-700 truncate mr-2">{quiz.title}</span>
+                                                                {quiz.attempted ? (
+                                                                    <span className={quiz.passed ? 'text-green-500 shrink-0' : 'text-kidOrange shrink-0'}>
+                                                                        {quiz.score}%
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-gray-400 shrink-0">Not taken</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                <button
+                                                    onClick={() => navigate(`/student/courses/${course.id}`)}
+                                                    className="w-full mt-1 bg-[#0F4C81] text-white font-bold py-2.5 rounded-xl hover:bg-[#0B3A63] transition shadow-soft text-xs tracking-wide flex justify-center items-center gap-2"
+                                                >
+                                                    Continue Course &rarr;
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 );
                             })}
                         </div>

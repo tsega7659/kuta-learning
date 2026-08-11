@@ -16,6 +16,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
                 topic: {
                     include: {
                         quiz: {
+                            where: { quizType: "QUIZ" },
                             orderBy: { order: "asc" },
                             select: { id: true, title: true, passingScore: true, order: true }
                         }

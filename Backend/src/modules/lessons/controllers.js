@@ -42,9 +42,14 @@ export const createLesson = async (req, res) => {
 export const updateLesson = async (req, res) => {
     const { title, description, coverImage, order } = req.body;
     try {
+        const updateData = { title, description };
+        if (coverImage !== undefined) updateData.coverImage = coverImage;
+        const finalOrder = parseInt(order);
+        if (!isNaN(finalOrder)) updateData.order = finalOrder;
+
         const lesson = await prisma.lesson.update({
             where: { id: req.params.id },
-            data: { title, description, coverImage, order: parseInt(order) },
+            data: updateData,
         });
         res.json(lesson);
     } catch (err) {

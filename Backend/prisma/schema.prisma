@@ -95,6 +95,7 @@ model Topic {
   lessons     Lesson[]
   quiz        Quiz[]
   practiceAttempts PracticeAttempt[]
+  bankQuestions BankQuestion[]
 
   @@unique([chapterId, order])
 }
@@ -129,11 +130,12 @@ model LessonContent {
 
 model Quiz {
   id           String        @id @default(uuid())
-  topicId      String        @unique
+  topicId      String
   topic        Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   title        String
   description  String?       // Optional short description shown to students
   passingScore Int           // As a percentage
+  quizType     String        @default("QUIZ") // QUIZ or BANK
   order        Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -236,4 +238,29 @@ model PracticeAnswer {
   selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: Cascade)
   textResponse     String?         
   isCorrect        Boolean
+}
+
+// ── Standalone Question Bank (separate from Quiz questions) ──
+
+model BankQuestion {
+  id          String               @id @default(uuid())
+  topicId     String
+  topic       Topic                @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  type        QuestionType         @default(SINGLE_CHOICE)
+  text        String
+  resourceUrl String?
+  explanation String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  options     BankQuestionOption[]
+}
+
+model BankQuestionOption {
+  id         String       @id @default(uuid())
+  questionId String
+  question   BankQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean      @default(false)
+  imageUrl   String?
+  order      Int
 }

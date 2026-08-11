@@ -45,19 +45,16 @@ export default function AdminQuestionBank() {
                 const quizFetches = [];
                 (detail.chapters || []).forEach(ch => {
                     (ch.topics || []).forEach(t => {
-                        (t.quiz || []).forEach(qGroup => {
-                            quizFetches.push({
-                                url: `/courses/${course.id}/chapters/${ch.id}/topics/${t.id}/quiz`,
-                                meta: {
-                                    courseId: course.id,
-                                    courseTitle: course.title,
-                                    chapterId: ch.id,
-                                    chapterTitle: ch.title,
-                                    topicId: t.id,
-                                    topicTitle: t.title,
-                                    quizId: qGroup.id
-                                }
-                            });
+                        quizFetches.push({
+                            url: `/courses/${course.id}/chapters/${ch.id}/topics/${t.id}/bank`,
+                            meta: {
+                                courseId: course.id,
+                                courseTitle: course.title,
+                                chapterId: ch.id,
+                                chapterTitle: ch.title,
+                                topicId: t.id,
+                                topicTitle: t.title
+                            }
                         });
                     });
                 });
@@ -390,6 +387,7 @@ export default function AdminQuestionBank() {
                             topicName={builderContext.topicTitle}
                             onClose={handleCloseBuilder}
                             defaultOpenMode={builderContext.defaultOpenMode}
+                            quizType="bank"
                         />
                     </div>
                 </div>

@@ -152,6 +152,26 @@ export default function AdminMockExams() {
 
     useEffect(() => { loadData(); }, []);
 
+    // Refresh live question counts for all persisted exams (fixes stale counts from before bank separation)
+    useEffect(() => {
+        if (mockExams.length === 0) return;
+        const refreshCounts = async () => {
+            const updated = await Promise.all(mockExams.map(async (exam) => {
+                try {
+                    const { data: qs } = await api.post('/practice/preview', { topicIds: exam.topicIds });
+                    const questionCount = qs.length;
+                    return { ...exam, questionCount, etaMinutes: Math.ceil(questionCount * 1.5) };
+                } catch {
+                    return exam; // keep as-is if fetch fails
+                }
+            }));
+            // Only persist if something changed
+            const changed = updated.some((ex, i) => ex.questionCount !== mockExams[i].questionCount);
+            if (changed) persistExams(updated);
+        };
+        refreshCounts();
+    }, []); // run once on mount
+
     // ── Build subject/topic filter options from all courses ──
     const availableSubjects = useMemo(() => {
         const src = selCourse === 'ALL' ? fullCourseTree : fullCourseTree.filter(c => c.id === selCourse);
@@ -185,15 +205,24 @@ export default function AdminMockExams() {
         }
         setGenerating(true);
         try {
-            const questionCount = Math.min(totalQuestions, 40);
+            // Fetch real question count from the bank (not from stale totalQuestions)
+            const topicIds = filteredTopics.map(t => t.id);
+            const { data: bankQuestions } = await api.post('/practice/preview', { topicIds });
+            const questionCount = bankQuestions.length;
+
+            if (questionCount === 0) {
+                alert('No questions found in the Question Bank for the selected topics. Add questions via the Question Bank page first.');
+                return;
+            }
+
             const newExam = {
                 id: `exam-${Date.now()}`,
                 title: `Mock Exam ${mockExams.length + 1}`,
-                topicIds: filteredTopics.map(t => t.id),
+                topicIds,
                 topicTitles: filteredTopics.map(t => t.title),
                 courseTitle: [...new Set(filteredTopics.map(t => t.courseTitle))].join(', '),
                 questionCount,
-                totalAvailable: totalQuestions,
+                totalAvailable: questionCount,
                 etaMinutes: Math.ceil(questionCount * 1.5),
                 status: 'draft',
                 createdAt: new Date().toISOString(),

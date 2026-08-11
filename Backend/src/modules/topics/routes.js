@@ -14,5 +14,9 @@ router.delete("/:id", authenticateToken, requireRole(["CONTENT_MANAGER"]), delet
 
 router.use("/:topicId/lessons", lessonRoutes);
 router.use("/:topicId/quiz", quizRoutes); // MAPPED AS TOPIC HAS 1 QUIZ MAX
+router.use("/:topicId/bank", (req, res, next) => {
+    req.isBank = true;
+    next();
+}, quizRoutes);
 
 export default router;
