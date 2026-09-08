@@ -10,27 +10,33 @@ export default function BottomNav() {
     ];
 
     return (
-        <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-100 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-4 py-2 z-50">
-            <div className="flex justify-between items-center">
+        <div className="fixed bottom-3 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+            <div className="w-full max-w-[390px] bg-white/95 backdrop-blur-md rounded-[32px] shadow-[0_10px_35px_rgba(12,59,107,0.14)] border border-orange-100 px-3 py-2 flex justify-between items-center pointer-events-auto">
                 {navItems.map((item) => (
                     <NavLink
                         key={item.name}
                         to={item.path}
                         className={({ isActive }) =>
-                            `flex flex-col items-center p-2 rounded-xl transition-all ${isActive ? 'text-kidOrange' : 'text-gray-400 hover:text-gray-600'
+                            `flex-1 flex flex-col items-center py-1.5 px-2 rounded-[22px] transition-all duration-200 ${
+                                isActive ? 'text-[#f26522]' : 'text-gray-400 hover:text-[#0c3b6b]'
                             }`
                         }
                     >
                         {({ isActive }) => (
-                            <>
-                                <div className={`relative px-4 py-1.5 rounded-full flex flex-col items-center justify-center transition-all ${isActive ? 'text-white' : ''}`}>
-                                    {isActive && <div className="absolute inset-0 bg-[#f88125] rounded-[18px]"></div>}
-                                    <div className="relative z-10 flex flex-col items-center">
-                                        <item.Icon className={`w-[22px] h-[22px] mb-1 ${isActive ? 'text-white' : 'text-gray-500'}`} />
-                                        <span className={`text-[10px] font-bold tracking-wide ${isActive ? 'text-white' : 'text-gray-500'}`}>{item.name}</span>
-                                    </div>
+                            <div className="flex flex-col items-center">
+                                <div
+                                    className={`w-11 h-8 rounded-full flex items-center justify-center transition-all ${
+                                        isActive ? 'bg-[#fff0e6] text-[#f26522] shadow-sm' : 'text-gray-400'
+                                    }`}
+                                >
+                                    <item.Icon className="w-5 h-5 transition-transform active:scale-90" />
                                 </div>
-                            </>
+                                <span className={`text-[11px] font-extrabold mt-0.5 tracking-tight ${
+                                    isActive ? 'text-[#f26522]' : 'text-gray-400 font-bold'
+                                }`}>
+                                    {item.name}
+                                </span>
+                            </div>
                         )}
                     </NavLink>
                 ))}
@@ -38,3 +44,5 @@ export default function BottomNav() {
         </div>
     );
 }
+
+

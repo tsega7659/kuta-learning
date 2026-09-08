@@ -11,6 +11,7 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 
 // Student Pages
+import HomeDashboard from './pages/student/HomeDashboard';
 import CourseList from './pages/student/CourseList';
 import CourseDetail from './pages/student/CourseDetail';
 import LessonView from './pages/student/LessonView';
@@ -45,7 +46,7 @@ function App() {
           {/* Student Routes (Protected) */}
           <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
             <Route path="/student" element={<StudentLayout />}>
-              <Route path="home" element={<CourseList />} />
+              <Route path="home" element={<HomeDashboard />} />
               <Route path="courses" element={<CourseList />} />
               <Route path="courses/:id" element={<CourseDetail />} />
               <Route path="lessons/:id" element={<LessonView />} />

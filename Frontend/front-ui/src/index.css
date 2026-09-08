@@ -1,47 +1,61 @@
 @import "tailwindcss";
 
 @theme {
-  --color-kid-primary: #3b82f6;
-  --color-kid-orange: #f97316;
-  --color-kid-bg: #f8fafc;
-  --color-kid-text: #334155;
-  --color-kid-light-card: #ffffff;
-  --color-kid-green: #22c55e;
-  --color-kid-red: #ef4444;
+  --color-kuta-orange: #f26522;
+  --color-kuta-orange-hover: #d95314;
+  --color-kuta-orange-light: #fff3ec;
+  --color-kuta-navy: #0c3b6b;
+  --color-kuta-navy-dark: #08294a;
+  --color-kuta-navy-light: #edf4fa;
+  --color-kuta-bg: #f7f5f0;
+  --color-kuta-text: #1a2736;
+  --color-kuta-green: #16a34a;
+  --color-kuta-yellow: #f59e0b;
 
-  --color-kidPrimary: #3b82f6;
-  --color-kidOrange: #f97316;
-  --color-kidBg: #f8fafc;
-  --color-kidText: #334155;
+  --color-kid-primary: #f26522;
+  --color-kidPrimary: #f26522;
+  --color-kidOrange: #f26522;
+  --color-kidBg: #f7f5f0;
+  --color-kidText: #1a2736;
   --color-kidLightCard: #ffffff;
-  --color-kidGreen: #22c55e;
+  --color-kidGreen: #16a34a;
   --color-kidRed: #ef4444;
 
-  --shadow-soft: 0 4px 14px 0 rgba(0, 0, 0, 0.05);
-  --shadow-btn: 0 4px 0 0 rgba(0, 0, 0, 0.1);
+  --shadow-soft: 0 4px 20px 0 rgba(12, 59, 107, 0.08);
+  --shadow-card: 0 8px 24px -4px rgba(242, 101, 34, 0.15);
+  --shadow-btn: 0 4px 0 0 rgba(0, 0, 0, 0.15);
   --font-sans: "Nunito", "Inter", sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-kidBg text-kidText font-sans selection:bg-kidOrange selection:text-white overscroll-none;
+    background-color: #f7f5f0;
+    color: #1a2736;
+    font-family: var(--font-sans);
     margin: 0;
     -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
   }
 }
 
-
 @layer utilities {
+  .bg-kuta-pattern {
+    background-color: #f7f5f0;
+    background-image: radial-gradient(#0c3b6b0d 1.5px, transparent 1.5px), radial-gradient(#f265220d 1.5px, #f7f5f0 1.5px);
+    background-size: 28px 28px;
+    background-position: 0 0, 14px 14px;
+  }
+
   .clip-path-rounded {
     clip-path: circle(50% at 50% 50%);
   }
 
   .kid-btn {
-    @apply bg-kidOrange text-white font-bold py-3 px-6 rounded-full hover:bg-orange-600 transition transform active:scale-95 shadow-btn text-lg w-full flex justify-center items-center gap-2;
+    @apply bg-[#f26522] text-white font-black py-3.5 px-6 rounded-full hover:bg-[#d95314] transition transform active:scale-95 shadow-[0_4px_0_0_#ad3c09] text-base w-full flex justify-center items-center gap-2;
   }
 
   .kid-btn-secondary {
-    @apply bg-kidBg text-kidText font-bold py-3 px-6 rounded-full hover:bg-slate-200 transition transform active:scale-95 shadow-btn border border-slate-200 text-lg w-full flex justify-center items-center gap-2;
+    @apply bg-[#0c3b6b] text-white font-bold py-3.5 px-6 rounded-full hover:bg-[#08294a] transition transform active:scale-95 shadow-soft text-base w-full flex justify-center items-center gap-2;
   }
 
   /* Custom scrollbar to avoid bulky look on desktop */
@@ -51,6 +65,8 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full;
+    background-color: #ffd8c2;
+    border-radius: 9999px;
   }
 }
+

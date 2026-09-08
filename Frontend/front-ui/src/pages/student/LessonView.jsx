@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     FaChevronLeft, FaCircleCheck, FaVolumeHigh, FaCirclePlay,
-    FaFaceSmileBeam, FaFileLines, FaWandMagicSparkles, FaLock, FaArrowRight,
+    FaFaceSmileBeam, FaFileLines, FaLock, FaArrowRight, FaTrophy, FaPause, FaPlay
 } from 'react-icons/fa6';
 import api from '../../services/api';
 
@@ -41,7 +41,7 @@ export default function LessonView() {
 
     const handleComplete = async () => {
         if (locked) {
-            alert('Complete the previous lesson before opening this lesson.');
+            alert('Complete the previous lesson before completing this lesson.');
             return;
         }
 
@@ -106,225 +106,214 @@ export default function LessonView() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh] bg-gradient-to-b from-blue-100 via-white to-orange-100">
-                <div className="w-12 h-12 border-4 border-kidOrange border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex items-center justify-center min-h-[70vh]">
+                <div className="w-12 h-12 border-4 border-[#f26522] border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
     }
 
     return (
-        <div className="bg-gradient-to-b from-blue-100 via-white to-orange-50 min-h-screen pb-32">
+        <div className="min-h-screen pb-32">
+            {/* Top Bar Header with Kuta Navy & Orange */}
+            <div className="bg-gradient-to-r from-[#0c3b6b] via-[#10477d] to-[#f26522] text-white pt-6 pb-5 px-4 rounded-b-[32px] shadow-[0_8px_20px_rgba(12,59,107,0.22)]">
+                <div className="flex items-center justify-between">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition active:scale-95 shadow-sm"
+                    >
+                        <FaChevronLeft className="w-5 h-5" />
+                    </button>
 
-            {/* Header */}
-            <div className="flex justify-between items-center px-5 pt-10 pb-4">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="bg-white/80 p-2.5 rounded-full shadow-sm border border-gray-100 hover:bg-white transition"
-                >
-                    <FaChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <span className="text-[#a54c15] font-black text-[13px] tracking-widest uppercase">Kuta Learning</span>
-                <div className="w-10" />
-            </div>
+                    <h1 className="text-[18px] font-black tracking-tight text-center truncate max-w-[220px]">
+                        {lesson?.title || 'Lesson Content'}
+                    </h1>
 
-            {/* Topic lesson list */}
-            {topicLessons.length > 1 && (
-                <div className="px-5 mb-6">
-                    <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Lessons in this topic</p>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="w-10" />
+                </div>
+
+                {/* Lesson Navigation Slider */}
+                {topicLessons.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto mt-4 pb-1 no-scrollbar">
                         {topicLessons.map((tl, idx) => {
                             const isCurrent = tl.id === id;
                             const isDone = tl.completed;
                             const isLocked = tl.locked && !isCurrent;
+
                             return (
                                 <button
                                     key={tl.id}
                                     type="button"
                                     disabled={isLocked}
                                     onClick={() => !isLocked && navigate(`/student/lessons/${tl.id}`)}
-                                    className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition ${
+                                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black transition-all ${
                                         isCurrent
-                                            ? 'bg-[#f26c24] text-white shadow-md'
+                                            ? 'bg-white text-[#f26522] shadow-md scale-105'
                                             : isDone
-                                                ? 'bg-green-50 text-green-700 border border-green-200'
+                                                ? 'bg-green-400/30 text-white border border-green-300/40'
                                                 : isLocked
-                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                    : 'bg-white text-gray-700 border border-gray-200'
+                                                    ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                                                    : 'bg-white/20 text-white hover:bg-white/30'
                                     }`}
                                 >
-                                    {isLocked ? <FaLock className="w-3 h-3" /> : isDone ? <FaCircleCheck className="w-3 h-3" /> : <span>{idx + 1}</span>}
-                                    <span className="max-w-[100px] truncate">{tl.title || `Lesson ${idx + 1}`}</span>
+                                    {isLocked ? <FaLock className="w-2.5 h-2.5" /> : isDone ? <FaCircleCheck className="w-3 h-3 text-green-300" /> : <span>{idx + 1}</span>}
+                                    <span className="max-w-[90px] truncate">{tl.title || `Lesson ${idx + 1}`}</span>
                                 </button>
                             );
                         })}
                     </div>
-                </div>
-            )}
+                )}
+            </div>
 
-            {/* Cover image (if exists) */}
-            {lesson?.coverImage && (
-                <div className="px-5 mb-6">
-                    <img
-                        src={lesson.coverImage}
-                        alt="Lesson cover"
-                        className="w-full h-[180px] object-cover rounded-[28px] shadow-md"
-                    />
-                </div>
-            )}
+            <div className="px-4 mt-5 space-y-4">
+                {/* Cover Image if available */}
+                {lesson?.coverImage && (
+                    <div className="w-full h-44 rounded-[28px] overflow-hidden shadow-soft border border-orange-100">
+                        <img
+                            src={lesson.coverImage}
+                            alt={lesson.title}
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                )}
 
-            {/* Lesson Title */}
-            <div className="px-6 mb-8 text-center">
-                <h1 className="text-[28px] font-black text-gray-900 leading-tight mb-2">{lesson?.title || 'Lesson'}</h1>
+                {/* Title and description */}
                 {lesson?.description && (
-                    <p className="text-gray-500 font-medium text-[14px] leading-relaxed">{lesson.description}</p>
-                )}
-            </div>
-
-            {/* Content blocks */}
-            <div className="px-5 space-y-5 mb-10">
-                {contents.length === 0 && (
-                    <div className="text-center p-10 bg-white/70 rounded-3xl border border-gray-100">
-                        <FaFaceSmileBeam className="text-4xl text-orange-400 mx-auto mb-2" />
-                        <p className="text-gray-400 font-bold">Lesson content coming soon!</p>
+                    <div className="bg-white rounded-[24px] p-4 shadow-[0_4px_16px_rgba(12,59,107,0.06)] border border-orange-50 text-center">
+                        <p className="text-[13px] font-bold text-[#1a2736]/85 leading-relaxed">
+                            {lesson.description}
+                        </p>
                     </div>
                 )}
 
-                {contents.map((item) => {
-                    if (item.type === 'TEXT') return (
-                        <div key={item.id} className="bg-white rounded-[28px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-50">
-                            {item.description && (
-                                <h3 className="font-extrabold text-gray-900 text-[17px] mb-3">{item.description}</h3>
-                            )}
-                            <p className="text-gray-700 font-medium text-[15px] leading-relaxed whitespace-pre-wrap">{item.content}</p>
-                        </div>
-                    );
-
-                    if (item.type === 'IMAGE') return (
-                        <div key={item.id} className="bg-white rounded-[28px] p-3 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-50">
-                            {item.description && (
-                                <h3 className="font-extrabold text-gray-900 text-[15px] mb-3 px-2">{item.description}</h3>
-                            )}
-                            <img src={item.content} alt="Lesson Visual" className="w-full rounded-[20px] object-cover" />
-                        </div>
-                    );
-
-                    if (item.type === 'VIDEO') return (
-                        <div key={item.id} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-[28px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-blue-100">
-                            <div className="flex items-center gap-2 mb-3 px-1">
-                                <FaCirclePlay className="w-5 h-5 text-blue-600" />
-                                <h3 className="font-extrabold text-blue-800 text-[15px]">{item.description || 'Watch & Learn'}</h3>
-                            </div>
-                            <div className="w-full aspect-video bg-black rounded-[18px] overflow-hidden shadow-md">
-                                <video src={item.content} controls className="w-full h-full" />
-                            </div>
-                        </div>
-                    );
-
-                    if (item.type === 'AUDIO') return (
-                        <div key={item.id} className="bg-white rounded-[28px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-blue-50 text-center">
-                            <h3 className="font-extrabold text-gray-900 text-[17px] mb-4">{item.description || 'Listen'}</h3>
-                            <div className="flex items-center justify-center gap-3 mb-3">
-                                <button
-                                    onClick={() => handleAudioToggle(item.content)}
-                                    className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-blue-300/40"
-                                >
-                                    <FaVolumeHigh className="w-8 h-8 text-white" />
-                                </button>
-                                <button
-                                    onClick={() => handleAudioToggle(item.content)}
-                                    className="px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-bold text-xs"
-                                >
-                                    {audioState.url === item.content && audioState.status === 'playing' ? 'Pause' : 'Play'}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (audioRef.current && audioRef.current.src === item.content && audioRef.current.paused) {
-                                            audioRef.current.play();
-                                            setAudioState({ url: item.content, status: 'playing' });
-                                        }
-                                    }}
-                                    className="px-4 py-2 rounded-full bg-orange-50 text-orange-600 font-bold text-xs"
-                                >
-                                    Resume
-                                </button>
-                                <button
-                                    onClick={stopAudio}
-                                    className="px-4 py-2 rounded-full bg-gray-100 text-gray-600 font-bold text-xs"
-                                >
-                                    Stop
-                                </button>
-                            </div>
-                            <p className="text-gray-500 font-medium text-[13px] mt-3">
-                                {audioState.url === item.content && audioState.status === 'playing' ? 'Playing now' : 'Tap to play'}
-                            </p>
-                        </div>
-                    );
-
-                    if (item.type === 'DOCUMENT') return (
-                        <div key={item.id} className="bg-white rounded-[28px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-50 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center">
-                                    <FaFileLines className="text-2xl text-orange-500" />
-                                </div>
-                                <span className="font-bold text-gray-800 text-[14px]">{item.description || 'Lesson Material'}</span>
-                            </div>
-                            <a
-                                href={item.content}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[13px] font-bold bg-[#f26c24] text-white px-4 py-2 rounded-full hover:bg-[#e05b13] transition shadow-sm"
-                            >
-                                Open
-                            </a>
-                        </div>
-                    );
-
-                    return null;
-                })}
-            </div>
-
-            {/* Action buttons */}
-            <div className="px-5 space-y-3">
-                {locked ? (
-                    <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-600 font-bold py-4 rounded-full border-2 border-amber-100">
-                        <FaLock className="w-5 h-5" />
-                        <span>Complete the previous lesson first.</span>
-                    </div>
-                ) : completed ? (
-                    <div className="flex items-center justify-center gap-2 bg-green-50 text-green-600 font-bold py-4 rounded-full border-2 border-green-100">
-                        <FaCircleCheck className="w-6 h-6" />
-                        <span>Lesson Completed!</span>
+                {/* Contents list */}
+                {contents.length === 0 ? (
+                    <div className="text-center p-8 bg-white rounded-[28px] border border-orange-100 shadow-soft">
+                        <FaFaceSmileBeam className="text-4xl text-[#f26522]/40 mx-auto mb-2" />
+                        <p className="text-gray-400 font-bold text-sm">Lesson content coming soon!</p>
                     </div>
                 ) : (
-                    <button
-                        onClick={handleComplete}
-                        disabled={completing}
-                        className="w-full bg-[#f26c24] text-white font-bold py-4 rounded-full hover:bg-[#e05b13] transition active:scale-95 shadow-lg shadow-orange-400/30 text-[16px] disabled:opacity-50"
-                    >
-                        {completing ? 'Saving...' : 'Mark as Complete'}
-                    </button>
+                    contents.map((item) => {
+                        if (item.type === 'TEXT') return (
+                            <div key={item.id} className="bg-white rounded-[28px] p-5 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60">
+                                {item.description && (
+                                    <h3 className="font-black text-[#0c3b6b] text-[16px] mb-2">{item.description}</h3>
+                                )}
+                                <p className="text-[#1a2736]/90 font-medium text-[14px] leading-relaxed whitespace-pre-wrap">{item.content}</p>
+                            </div>
+                        );
+
+                        if (item.type === 'IMAGE') return (
+                            <div key={item.id} className="bg-white rounded-[28px] p-3 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60">
+                                {item.description && (
+                                    <h3 className="font-black text-[#0c3b6b] text-[15px] mb-2 px-2">{item.description}</h3>
+                                )}
+                                <img src={item.content} alt="Lesson Visual" className="w-full rounded-[20px] object-cover" />
+                            </div>
+                        );
+
+                        if (item.type === 'VIDEO') return (
+                            <div key={item.id} className="bg-white rounded-[28px] p-4 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <FaCirclePlay className="w-5 h-5 text-[#f26522]" />
+                                    <h3 className="font-black text-[#0c3b6b] text-[15px]">{item.description || 'Watch & Learn'}</h3>
+                                </div>
+                                <div className="w-full aspect-video bg-black rounded-[20px] overflow-hidden shadow-inner">
+                                    <video src={item.content} controls className="w-full h-full" />
+                                </div>
+                            </div>
+                        );
+
+                        if (item.type === 'AUDIO') return (
+                            <div key={item.id} className="bg-white rounded-[28px] p-5 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60 text-center">
+                                <h3 className="font-black text-[#0c3b6b] text-[16px] mb-3">{item.description || 'Listen & Repeat'}</h3>
+                                
+                                <div className="flex items-center justify-center gap-3">
+                                    <button
+                                        onClick={() => handleAudioToggle(item.content)}
+                                        className="w-16 h-16 bg-gradient-to-tr from-[#f26522] to-[#ff8533] rounded-full flex items-center justify-center text-white shadow-lg shadow-orange-300/50 hover:scale-105 active:scale-95 transition-transform"
+                                    >
+                                        {audioState.url === item.content && audioState.status === 'playing' ? (
+                                            <FaPause className="w-6 h-6" />
+                                        ) : (
+                                            <FaPlay className="w-6 h-6 ml-0.5" />
+                                        )}
+                                    </button>
+                                </div>
+                                
+                                <p className="text-[12px] font-bold text-gray-400 mt-3">
+                                    {audioState.url === item.content && audioState.status === 'playing' ? 'Playing now 🎵' : 'Tap to play audio'}
+                                </p>
+                            </div>
+                        );
+
+                        if (item.type === 'DOCUMENT') return (
+                            <div key={item.id} className="bg-white rounded-[28px] p-4 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-11 h-11 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100">
+                                        <FaFileLines className="text-xl text-[#f26522]" />
+                                    </div>
+                                    <span className="font-black text-[#0c3b6b] text-[13px]">{item.description || 'Lesson Material'}</span>
+                                </div>
+                                <a
+                                    href={item.content}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs font-black bg-[#f26522] text-white px-4 py-2 rounded-full hover:bg-orange-600 transition shadow-sm"
+                                >
+                                    Open
+                                </a>
+                            </div>
+                        );
+
+                        return null;
+                    })
                 )}
 
-                {completed && nextLessonId && (
-                    <button
-                        onClick={() => navigate(`/student/lessons/${nextLessonId}`)}
-                        className="w-full bg-gradient-to-r from-orange-400 to-[#f26c24] text-white font-bold py-4 rounded-full hover:from-orange-500 hover:to-[#e05b13] transition active:scale-95 shadow-lg shadow-orange-400/30 text-[16px] flex items-center justify-center gap-2"
-                    >
-                        <span>Continue to Next Lesson</span>
-                        <FaArrowRight className="text-lg" />
-                    </button>
-                )}
+                {/* Progress Completion Actions */}
+                <div className="pt-2 space-y-3">
+                    {locked ? (
+                        <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-700 font-black py-4 rounded-full border border-amber-200 text-sm">
+                            <FaLock className="w-4 h-4" />
+                            <span>Complete the previous lesson first</span>
+                        </div>
+                    ) : completed ? (
+                        <div className="flex items-center justify-center gap-2 bg-green-50 text-green-700 font-black py-3.5 rounded-full border border-green-200 text-sm">
+                            <FaCircleCheck className="w-5 h-5 text-green-600" />
+                            <span>Lesson Completed!</span>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleComplete}
+                            disabled={completing}
+                            className="w-full bg-[#f26522] text-white font-black py-4 rounded-full hover:bg-orange-600 transition active:scale-95 shadow-[0_6px_20px_rgba(242,101,34,0.3)] text-base disabled:opacity-50"
+                        >
+                            {completing ? 'Saving Progress...' : 'Mark as Complete ⭐'}
+                        </button>
+                    )}
 
-                {quizAvailable && quizzes.length > 0 && (
-                    <button
-                        onClick={() => navigate(`/student/quiz/${quizzes[0].id}`)}
-                        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold py-4 rounded-full hover:from-blue-600 hover:to-blue-700 transition active:scale-95 shadow-lg shadow-blue-400/30 text-[16px] flex items-center justify-center gap-2"
-                    >
-                        <span>Take Quiz</span>
-                        <FaWandMagicSparkles className="text-xl" />
-                    </button>
-                )}
+                    {completed && nextLessonId && (
+                        <button
+                            onClick={() => navigate(`/student/lessons/${nextLessonId}`)}
+                            className="w-full bg-gradient-to-r from-[#0c3b6b] to-[#134980] text-white font-black py-4 rounded-full hover:bg-[#08294a] transition active:scale-95 shadow-[0_6px_20px_rgba(12,59,107,0.3)] text-base flex items-center justify-center gap-2"
+                        >
+                            <span>Next Lesson</span>
+                            <FaArrowRight className="text-base" />
+                        </button>
+                    )}
+
+                    {quizAvailable && quizzes.length > 0 && (
+                        <button
+                            onClick={() => navigate(`/student/quiz/${quizzes[0].id}`)}
+                            className="w-full bg-gradient-to-r from-amber-400 to-[#f26522] text-white font-black py-4 rounded-full hover:from-amber-500 hover:to-orange-600 transition active:scale-95 shadow-[0_6px_20px_rgba(242,101,34,0.3)] text-base flex items-center justify-center gap-2"
+                        >
+                            <span>Take Chapter Quiz</span>
+                            <FaTrophy className="text-lg text-white" />
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
 }
+
+

@@ -12,7 +12,26 @@ export const getRandomQuestion = async (req, res) => {
         });
 
         if (questions.length === 0) {
-            return res.status(404).json({ message: "No questions available" });
+            // Fallback parent gate math question if no quiz questions are in database
+            const n1 = Math.floor(Math.random() * 8) + 3;
+            const n2 = Math.floor(Math.random() * 8) + 3;
+            const correct = n1 * n2;
+            const wrong1 = correct + (Math.random() > 0.5 ? 2 : -2);
+            const wrong2 = correct + (Math.random() > 0.5 ? 4 : -4);
+            const wrong3 = correct + 6;
+            const opts = [
+                { id: 'correct', text: `${correct}` },
+                { id: 'w1', text: `${wrong1}` },
+                { id: 'w2', text: `${wrong2}` },
+                { id: 'w3', text: `${wrong3}` },
+            ].sort(() => Math.random() - 0.5);
+
+            return res.json({
+                id: `math-gate-${n1}-${n2}-${correct}`,
+                text: `Parent Verification: What is ${n1} × ${n2}?`,
+                type: 'SINGLE_CHOICE',
+                options: opts
+            });
         }
 
         const randomQ = questions[Math.floor(Math.random() * questions.length)];
@@ -31,7 +50,20 @@ export const getRandomQuestion = async (req, res) => {
             options: safeOptions
         });
     } catch (err) {
-        res.status(500).json({ message: "Server error" });
+        // Fallback on error so parents are never blocked
+        const n1 = 7;
+        const n2 = 8;
+        res.json({
+            id: `math-gate-${n1}-${n2}-56`,
+            text: `Parent Verification: What is ${n1} × ${n2}?`,
+            type: 'SINGLE_CHOICE',
+            options: [
+                { id: 'correct', text: '56' },
+                { id: 'w1', text: '48' },
+                { id: 'w2', text: '54' },
+                { id: 'w3', text: '64' }
+            ].sort(() => Math.random() - 0.5)
+        });
     }
 };
 
@@ -39,6 +71,14 @@ export const getRandomQuestion = async (req, res) => {
 export const verifyRandomQuestion = async (req, res) => {
     const { questionId, selectedOptionId, selectedOptionIds } = req.body;
     try {
+        // Check if it's a fallback math gate question
+        if (typeof questionId === 'string' && questionId.startsWith('math-gate-')) {
+            const parts = questionId.split('-');
+            const correctVal = parts[3];
+            const isCorrect = selectedOptionId === 'correct';
+            return res.json({ isCorrect });
+        }
+
         const question = await prisma.question.findUnique({
             where: { id: questionId },
             include: { options: true }

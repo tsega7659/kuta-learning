@@ -4,7 +4,8 @@ import {
     FaChevronLeft, FaChevronRight, FaCircleCheck, FaVolumeHigh,
     FaCircleDot, FaSquareCheck, FaPalette, FaFont, FaLink, FaPencil,
     FaHandPointer, FaArrowRight, FaCheck, FaCircleQuestion, FaInbox,
-    FaCircleXmark,
+    FaCircleXmark, FaRotateRight, FaLightbulb, FaStar,
+    FaPlay
 } from 'react-icons/fa6';
 import api from '../../services/api';
 
@@ -62,13 +63,15 @@ function MatchingQuestion({ question, answer, setAnswer }) {
 
     return (
         <div>
-            <p className="text-xs font-bold text-blue-500 mb-4">
-                Tap a question on the left, then its matching answer on the right <FaLink className="inline w-3 h-3" />
-            </p>
+            <div className="bg-orange-50/80 border border-orange-200 rounded-2xl p-3 mb-4 text-center">
+                <p className="text-xs font-black text-[#0c3b6b] flex items-center justify-center gap-1.5">
+                    <FaLink className="text-[#f26522]" /> Tap left item, then its matching answer on right
+                </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
                 {/* Left column */}
-                <div className="space-y-2">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-1">Questions</p>
+                <div className="space-y-2.5">
+                    <p className="text-[10px] font-black text-[#0c3b6b]/60 uppercase tracking-widest text-center mb-1">Questions</p>
                     {pairs.map(p => {
                         const matched = selections[p.id];
                         const matchedText = shuffledAnswers.find(a => a.id === matched)?.text;
@@ -76,42 +79,50 @@ function MatchingQuestion({ question, answer, setAnswer }) {
                         return (
                             <div key={p.id} className="relative">
                                 <button
+                                    type="button"
                                     onClick={() => matched ? clearPair(p.id) : handleLeftTap(p.id)}
-                                    className={`w-full p-3 rounded-2xl border-2 text-left text-sm font-bold transition-all active:scale-95 ${matched ? 'border-green-400 bg-green-50 text-green-800' :
-                                            isActive ? 'border-kidPrimary bg-blue-50 text-kidPrimary shadow-md scale-[1.02]' :
-                                                'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                                        }`}
+                                    className={`w-full p-3.5 rounded-2xl border-2 text-left text-sm font-bold transition-all active:scale-95 shadow-sm ${
+                                        matched
+                                            ? 'border-green-400 bg-green-50 text-green-800'
+                                            : isActive
+                                                ? 'border-[#f26522] bg-orange-50 text-[#f26522] shadow-md scale-[1.02]'
+                                                : 'border-gray-100 bg-white text-gray-700 hover:border-orange-200'
+                                    }`}
                                 >
                                     {p.qText}
                                     {matched && (
-                                        <span className="block text-[10px] font-bold text-green-600 mt-0.5">
+                                        <span className="block text-[11px] font-black text-green-600 mt-1">
                                             <FaArrowRight className="inline w-3 h-3 mr-1" /> {matchedText}
                                         </span>
                                     )}
                                 </button>
                                 {isActive && (
-                                    <FaArrowRight className="absolute -right-2 top-1/2 -translate-y-1/2 text-kidPrimary w-4 h-4" />
+                                    <FaArrowRight className="absolute -right-2 top-1/2 -translate-y-1/2 text-[#f26522] w-4 h-4" />
                                 )}
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Right column — shuffled answers */}
-                <div className="space-y-2">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-1">Answers</p>
+                {/* Right column */}
+                <div className="space-y-2.5">
+                    <p className="text-[10px] font-black text-[#0c3b6b]/60 uppercase tracking-widest text-center mb-1">Answers</p>
                     {shuffledAnswers.map(ans => {
                         const isUsed = usedRightIds.has(ans.id);
                         const isTarget = activeLeft && !isUsed;
                         return (
                             <button
                                 key={ans.id}
+                                type="button"
                                 onClick={() => !isUsed && handleRightTap(ans.id)}
                                 disabled={isUsed}
-                                className={`w-full p-3 rounded-2xl border-2 text-sm font-bold transition-all active:scale-95 ${isUsed ? 'border-green-300 bg-green-50/60 text-green-700 opacity-60' :
-                                        isTarget ? 'border-orange-300 bg-orange-50 text-orange-700 hover:border-orange-400' :
-                                            'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                                    }`}
+                                className={`w-full p-3.5 rounded-2xl border-2 text-sm font-bold transition-all active:scale-95 shadow-sm ${
+                                    isUsed
+                                        ? 'border-green-300 bg-green-50/60 text-green-700 opacity-60'
+                                        : isTarget
+                                            ? 'border-[#0c3b6b] bg-blue-50 text-[#0c3b6b] hover:border-[#0c3b6b]'
+                                            : 'border-gray-100 bg-white text-gray-700 hover:border-orange-200'
+                                }`}
                             >
                                 {ans.text}
                             </button>
@@ -121,8 +132,8 @@ function MatchingQuestion({ question, answer, setAnswer }) {
             </div>
 
             {Object.keys(selections).length === pairs.length && (
-                <div className="mt-4 text-center text-xs font-bold text-green-600 bg-green-50 py-2 rounded-2xl flex items-center justify-center gap-1.5">
-                    <FaCircleCheck className="w-3.5 h-3.5" /> All matched! Tap any left item to unlink.
+                <div className="mt-4 text-center text-xs font-black text-green-600 bg-green-50 py-2.5 rounded-2xl flex items-center justify-center gap-1.5 border border-green-200">
+                    <FaCircleCheck className="w-4 h-4" /> All matched! Tap any left item to unlink.
                 </div>
             )}
         </div>
@@ -135,7 +146,7 @@ function WordOrderQuestion({ question, answer, setAnswer }) {
         correctWord.split('').map((ch, i) => ({ ch, uid: `${i}-${ch}` }))
     ), [question.id]);
 
-    const chosen = answer?.letterOrder || []; // array of uid
+    const chosen = answer?.letterOrder || [];
 
     const addLetter = (uid) => {
         if (chosen.includes(uid)) return;
@@ -158,18 +169,26 @@ function WordOrderQuestion({ question, answer, setAnswer }) {
 
     return (
         <div>
-            <p className="text-xs font-bold text-orange-500 mb-3 flex items-center gap-1.5"><FaFont className="w-3.5 h-3.5" /> Tap letters to spell the correct word</p>
+            <div className="bg-orange-50/80 border border-orange-200 rounded-2xl p-2.5 mb-3 text-center">
+                <p className="text-xs font-black text-[#0c3b6b] flex items-center justify-center gap-1.5">
+                    <FaFont className="text-[#f26522]" /> Tap letters to build the word in order
+                </p>
+            </div>
 
             {/* Answer tray */}
-            <div className="mb-4 min-h-[52px] bg-blue-50 border-2 border-dashed border-blue-200 rounded-2xl p-3 flex flex-wrap gap-2 items-center">
+            <div className="mb-4 min-h-[56px] bg-white border-2 border-dashed border-orange-300 rounded-2xl p-3 flex flex-wrap gap-2 items-center justify-center shadow-inner">
                 {chosen.length === 0 ? (
                     <span className="text-gray-400 text-xs font-bold">Tap letters below to build the word…</span>
                 ) : (
                     chosen.map(uid => {
                         const letter = shuffledLetters.find(l => l.uid === uid);
                         return (
-                            <button key={uid} onClick={() => removeLetter(uid)}
-                                className="w-10 h-10 bg-kidPrimary text-white font-black text-lg rounded-xl shadow active:scale-90 transition-all border-b-4 border-blue-700">
+                            <button
+                                key={uid}
+                                type="button"
+                                onClick={() => removeLetter(uid)}
+                                className="w-11 h-11 bg-[#0c3b6b] text-white font-black text-xl rounded-2xl shadow active:scale-90 transition-all border-b-4 border-[#072442]"
+                            >
                                 {letter?.ch}
                             </button>
                         );
@@ -178,15 +197,21 @@ function WordOrderQuestion({ question, answer, setAnswer }) {
             </div>
 
             {/* Letter pool */}
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap gap-2.5 justify-center">
                 {shuffledLetters.map(l => {
                     const used = chosen.includes(l.uid);
                     return (
-                        <button key={l.uid} onClick={() => !used && addLetter(l.uid)} disabled={used}
-                            className={`w-10 h-10 font-black text-lg rounded-xl transition-all border-b-4 active:scale-90 ${used
-                                    ? 'bg-gray-100 text-gray-300 border-gray-200 opacity-50'
-                                    : 'bg-kidOrange text-white border-orange-700 hover:scale-105 shadow'
-                                }`}>
+                        <button
+                            key={l.uid}
+                            type="button"
+                            onClick={() => !used && addLetter(l.uid)}
+                            disabled={used}
+                            className={`w-11 h-11 font-black text-xl rounded-2xl transition-all border-b-4 active:scale-90 ${
+                                used
+                                    ? 'bg-gray-100 text-gray-300 border-gray-200 opacity-40'
+                                    : 'bg-[#f26522] text-white border-[#b54611] hover:scale-105 shadow-md'
+                            }`}
+                        >
                             {l.ch}
                         </button>
                     );
@@ -194,9 +219,15 @@ function WordOrderQuestion({ question, answer, setAnswer }) {
             </div>
 
             {chosen.length > 0 && (
-                <button onClick={clearAll} className="mt-3 text-xs font-bold text-red-400 hover:text-red-600 underline">
-                    Clear all
-                </button>
+                <div className="text-center mt-3">
+                    <button
+                        type="button"
+                        onClick={clearAll}
+                        className="text-xs font-black text-red-500 hover:text-red-700 underline"
+                    >
+                        Clear all letters
+                    </button>
+                </div>
             )}
         </div>
     );
@@ -210,18 +241,29 @@ function ColorMatchQuestion({ question, answers, onSelect }) {
                 const isSel = selected === opt.id;
                 const hasImg = opt.imageUrl && !opt.imageUrl.startsWith('match::');
                 return (
-                    <button key={opt.id} onClick={() => onSelect(question, opt.id)}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all active:scale-95 ${isSel ? 'border-kidPrimary bg-blue-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-300'
-                            }`}>
+                    <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => onSelect(question, opt.id)}
+                        className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl border-2 transition-all active:scale-95 shadow-sm ${
+                            isSel ? 'border-[#f26522] bg-orange-50 shadow-md ring-2 ring-[#f26522]/20' : 'border-gray-100 bg-white hover:border-orange-200'
+                        }`}
+                    >
                         {hasImg ? (
-                            <img src={opt.imageUrl} alt="" className="w-full h-20 object-cover rounded-xl" />
+                            <img src={opt.imageUrl} alt="" className="w-full h-24 object-cover rounded-xl" />
                         ) : (
-                            <FaPalette className="text-4xl text-orange-400" />
+                            <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center text-[#f26522]">
+                                <FaPalette className="text-3xl" />
+                            </div>
                         )}
-                        <span className={`font-bold text-sm ${isSel ? 'text-kidPrimary' : 'text-gray-700'}`}>
+                        <span className={`font-black text-sm ${isSel ? 'text-[#0c3b6b]' : 'text-gray-700'}`}>
                             {opt.text}
                         </span>
-                        {isSel && <span className="text-kidPrimary font-black text-xs flex items-center gap-1"><FaCheck className="w-3 h-3" /> Selected</span>}
+                        {isSel && (
+                            <span className="text-[#f26522] font-black text-xs flex items-center gap-1">
+                                <FaCheck className="w-3 h-3" /> Selected
+                            </span>
+                        )}
                     </button>
                 );
             })}
@@ -238,6 +280,17 @@ export default function QuizPage() {
     const [answers, setAnswers] = useState({});
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [secondsLeft, setSecondsLeft] = useState(60);
+    const [hintsRemaining, setHintsRemaining] = useState(3);
+    const [speaking, setSpeaking] = useState(false);
+
+    // Timer countdown
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setSecondsLeft(prev => (prev > 0 ? prev - 1 : 60));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         api.get(`/quizzes/${quizId}`)
@@ -275,6 +328,38 @@ export default function QuizPage() {
         return !!a.selectedOptionId;
     };
 
+    const handleResetCurrent = () => {
+        if (questions[current]) {
+            setAnswer(questions[current].id, {
+                selectedOptionId: null,
+                selectedOptionIds: [],
+                textResponse: '',
+                matchSelections: {},
+                letterOrder: []
+            });
+        }
+    };
+
+    const handleUseHint = () => {
+        if (hintsRemaining > 0) {
+            setHintsRemaining(prev => prev - 1);
+            alert(`💡 Hint: Look carefully at the question keywords and choose the best fit! (${hintsRemaining - 1} hints remaining)`);
+        }
+    };
+
+    const speakQuestion = (text) => {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1;
+            utterance.onstart = () => setSpeaking(true);
+            utterance.onend = () => setSpeaking(false);
+            utterance.onerror = () => setSpeaking(false);
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
     const handleSubmit = async () => {
         setSubmitting(true);
         try {
@@ -310,37 +395,42 @@ export default function QuizPage() {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-[70vh] bg-[#E7F6FF]">
-            <div className="w-12 h-12 border-4 border-kidOrange border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center justify-center min-h-screen bg-[#f7f5f0]">
+            <div className="w-12 h-12 border-4 border-[#f26522] border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
     if (error || !quiz) return (
-        <div className="min-h-screen bg-[#E7F6FF] flex flex-col items-center justify-center p-8 text-center">
+        <div className="min-h-screen bg-[#f7f5f0] flex flex-col items-center justify-center p-8 text-center">
             <FaInbox className="text-5xl text-gray-400 mx-auto mb-4" />
             <p className="font-bold text-gray-500">{error || 'Quiz not found'}</p>
-            <button onClick={() => navigate(-1)} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">GO BACK</button>
+            <button onClick={() => navigate(-1)} className="mt-6 bg-[#f26522] text-white font-black px-6 py-3 rounded-full shadow-[0_4px_0_0_#b54611]">
+                GO BACK
+            </button>
         </div>
     );
 
     if (questions.length === 0) return (
-        <div className="min-h-screen bg-[#E7F6FF] flex flex-col items-center justify-center p-8 text-center">
+        <div className="min-h-screen bg-[#f7f5f0] flex flex-col items-center justify-center p-8 text-center">
             <FaCircleQuestion className="text-5xl text-gray-400 mx-auto mb-4" />
             <p className="font-bold text-gray-500">This quiz has no questions yet.</p>
-            <button onClick={() => navigate(-1)} className="mt-6 kid-btn bg-kidOrange shadow-[0_6px_0_0_#c2410c]">GO BACK</button>
+            <button onClick={() => navigate(-1)} className="mt-6 bg-[#f26522] text-white font-black px-6 py-3 rounded-full shadow-[0_4px_0_0_#b54611]">
+                GO BACK
+            </button>
         </div>
     );
 
     const q = questions[current];
     const isLast = current === questions.length - 1;
     const answeredCount = questions.filter(isAnswered).length;
-    const progress = Math.round((answeredCount / questions.length) * 100);
+    const minutes = Math.floor(secondsLeft / 60);
+    const secs = secondsLeft % 60;
+    const timeFormatted = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
 
     const renderQuestion = (question) => {
         const a = answers[question.id];
 
         switch (question.type) {
-
             case 'MATCHING':
                 return (
                     <MatchingQuestion
@@ -363,13 +453,17 @@ export default function QuizPage() {
             case 'FILL_IN_BLANK': {
                 const val = a?.textResponse || '';
                 return (
-                    <div>
-                        <p className="text-xs font-bold text-orange-500 mb-3 flex items-center gap-1.5"><FaPencil className="w-3.5 h-3.5" /> Type the missing word</p>
+                    <div className="space-y-3">
+                        <div className="bg-orange-50/80 border border-orange-200 rounded-2xl p-2.5 text-center">
+                            <p className="text-xs font-black text-[#0c3b6b] flex items-center justify-center gap-1.5">
+                                <FaPencil className="text-[#f26522]" /> Type your answer in the box below
+                            </p>
+                        </div>
                         <input
                             value={val}
                             onChange={e => setAnswer(question.id, { textResponse: e.target.value })}
-                            placeholder="Type your answer..."
-                            className="w-full p-4 rounded-2xl border-2 border-gray-200 focus:border-kidPrimary outline-none text-center text-xl font-bold text-kidText"
+                            placeholder="Type here..."
+                            className="w-full p-4 rounded-2xl border-2 border-orange-200 focus:border-[#f26522] outline-none text-center text-xl font-black text-[#0c3b6b] bg-white shadow-inner"
                         />
                     </div>
                 );
@@ -387,17 +481,29 @@ export default function QuizPage() {
             case 'MULTIPLE_CHOICE': {
                 const selected = a?.selectedOptionIds || [];
                 return (
-                    <div className="space-y-3">
-                        <p className="text-xs font-bold text-orange-500 mb-3 flex items-center gap-1.5"><FaSquareCheck className="w-3.5 h-3.5" /> Select ALL correct answers</p>
+                    <div className="space-y-2.5">
+                        <div className="bg-orange-50/80 border border-orange-200 rounded-2xl p-2.5 text-center mb-2">
+                            <p className="text-xs font-black text-[#0c3b6b] flex items-center justify-center gap-1.5">
+                                <FaSquareCheck className="text-[#f26522]" /> Select ALL correct answers
+                            </p>
+                        </div>
                         {question.options.map(opt => {
                             const isSel = selected.includes(opt.id);
                             return (
-                                <button key={opt.id} onClick={() => handleSelectOption(question, opt.id)}
-                                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                    <span className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 ${isSel ? 'bg-kidPrimary border-kidPrimary text-white' : 'border-gray-300'}`}>
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => handleSelectOption(question, opt.id)}
+                                    className={`w-full flex items-center gap-3.5 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] shadow-sm ${
+                                        isSel ? 'border-[#f26522] bg-orange-50/80' : 'border-gray-100 bg-white hover:border-orange-200'
+                                    }`}
+                                >
+                                    <span className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 ${
+                                        isSel ? 'bg-[#f26522] border-[#f26522] text-white' : 'border-gray-300'
+                                    }`}>
                                         {isSel && <FaCheck className="w-3.5 h-3.5" />}
                                     </span>
-                                    <span className="font-bold text-kidText">{opt.text}</span>
+                                    <span className={`font-black text-sm ${isSel ? 'text-[#0c3b6b]' : 'text-gray-700'}`}>{opt.text}</span>
                                 </button>
                             );
                         })}
@@ -407,13 +513,27 @@ export default function QuizPage() {
 
             case 'TRUE_FALSE':
                 return (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
                         {question.options.map(opt => {
                             const isSel = a?.selectedOptionId === opt.id;
+                            const isTrue = opt.text.toLowerCase().includes('true');
                             return (
-                                <button key={opt.id} onClick={() => handleSelectOption(question, opt.id)}
-                                    className={`w-full flex items-center justify-center gap-2 p-5 rounded-2xl border-2 font-bold text-xl transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50 text-kidPrimary' : 'border-gray-200 bg-white text-kidText hover:border-gray-300'}`}>
-                                    {opt.text === 'True' ? <FaCircleCheck className="w-5 h-5" /> : <FaCircleXmark className="w-5 h-5" />} {opt.text}
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => handleSelectOption(question, opt.id)}
+                                    className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border-2 font-black text-lg transition-all active:scale-[0.98] shadow-sm ${
+                                        isSel
+                                            ? 'border-[#f26522] bg-orange-50 text-[#0c3b6b] ring-2 ring-[#f26522]/20'
+                                            : 'border-gray-100 bg-white text-gray-700 hover:border-orange-200'
+                                    }`}
+                                >
+                                    {isTrue ? (
+                                        <FaCircleCheck className={`w-8 h-8 ${isSel ? 'text-green-500' : 'text-gray-300'}`} />
+                                    ) : (
+                                        <FaCircleXmark className={`w-8 h-8 ${isSel ? 'text-red-500' : 'text-gray-300'}`} />
+                                    )}
+                                    <span>{opt.text}</span>
                                 </button>
                             );
                         })}
@@ -422,18 +542,26 @@ export default function QuizPage() {
 
             default: {
                 return (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                         {question.options.map(opt => {
                             const isSel = a?.selectedOptionId === opt.id;
                             const hasImg = opt.imageUrl && !opt.imageUrl.startsWith('match::');
                             return (
-                                <button key={opt.id} onClick={() => handleSelectOption(question, opt.id)}
-                                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${isSel ? 'border-kidPrimary bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                    <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${isSel ? 'bg-kidPrimary border-kidPrimary text-white' : 'border-gray-300'}`}>
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => handleSelectOption(question, opt.id)}
+                                    className={`w-full flex items-center gap-3.5 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] shadow-sm ${
+                                        isSel ? 'border-[#f26522] bg-orange-50/80 ring-2 ring-[#f26522]/15' : 'border-gray-100 bg-white hover:border-orange-200'
+                                    }`}
+                                >
+                                    <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                        isSel ? 'bg-[#f26522] border-[#f26522] text-white' : 'border-gray-300'
+                                    }`}>
                                         {isSel && <FaCheck className="w-3.5 h-3.5" />}
                                     </span>
-                                    {hasImg && <img src={opt.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />}
-                                    <span className="font-bold text-kidText">{opt.text}</span>
+                                    {hasImg && <img src={opt.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />}
+                                    <span className={`font-black text-sm ${isSel ? 'text-[#0c3b6b]' : 'text-gray-700'}`}>{opt.text}</span>
                                 </button>
                             );
                         })}
@@ -444,74 +572,175 @@ export default function QuizPage() {
     };
 
     return (
-        <div className="bg-[#E7F6FF] min-h-screen px-5 pt-6 pb-32">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <button onClick={() => navigate(-1)}
-                    className="bg-white p-2.5 rounded-full shadow-sm border border-gray-100 hover:bg-gray-50 transition">
-                    <FaChevronLeft className="w-5 h-5 text-gray-600" />
+        <div className="min-h-screen bg-[#f7f5f0] px-4 pt-5 pb-36">
+            {/* Top Bar (matching Screenshot 3 & 5) */}
+            <div className="flex items-center justify-between gap-2 mb-4">
+                {/* Back button */}
+                <button
+                    onClick={() => navigate(-1)}
+                    className="w-11 h-11 bg-white rounded-2xl shadow-[0_4px_12px_rgba(12,59,107,0.08)] border border-orange-100 flex items-center justify-center text-[#0c3b6b] hover:bg-orange-50 active:scale-95 transition"
+                >
+                    <FaChevronLeft className="w-5 h-5" />
                 </button>
-                <h2 className="text-kidOrange font-bold text-sm tracking-widest uppercase">Kuta Learning</h2>
-                <div className="w-10 h-10" />
+
+                {/* Right utility chips */}
+                <div className="flex items-center gap-2">
+                    {/* Timer */}
+                    <div className="bg-white px-3 py-1.5 rounded-full shadow-sm border border-blue-100 flex items-center gap-1.5 text-xs font-black text-[#0c3b6b]">
+                        <span>⏱️</span>
+                        <span>0:{timeFormatted}</span>
+                    </div>
+
+                    {/* Reset Button */}
+                    <button
+                        onClick={handleResetCurrent}
+                        title="Restart question"
+                        className="w-9 h-9 bg-white rounded-full shadow-sm border border-orange-100 flex items-center justify-center text-[#f26522] hover:bg-orange-50 active:scale-95 transition"
+                    >
+                        <FaRotateRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Hint Bulb Button */}
+                    <button
+                        onClick={handleUseHint}
+                        title="Use Hint"
+                        className="bg-white px-2.5 py-1 rounded-full shadow-sm border border-yellow-200 flex items-center gap-1 text-xs font-black text-yellow-600 hover:bg-yellow-50 active:scale-95 transition"
+                    >
+                        <FaLightbulb className="w-3.5 h-3.5 text-yellow-500" />
+                        <span>{hintsRemaining}</span>
+                    </button>
+
+                    {/* Help Icon */}
+                    <button
+                        onClick={() => alert('Read or listen to the question carefully, then choose or tap the correct answer below!')}
+                        title="Help"
+                        className="w-9 h-9 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-95 transition"
+                    >
+                        <FaCircleQuestion className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
-            {/* Progress */}
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-gray-400">Question {current + 1} of {questions.length}</span>
-                <span className="text-xs font-bold text-kidOrange">{answeredCount}/{questions.length} answered</span>
-            </div>
-            <div className="w-full bg-white h-2.5 rounded-full mb-8 overflow-hidden">
-                <div className="bg-kidOrange h-2.5 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
-            </div>
-
-            {/* Question card */}
-            <div className="bg-white rounded-[28px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-gray-100">
-                <div className="flex items-center gap-2 mb-4">
-                    {(() => { const Icon = TYPE_ICONS[q.type] || FaCircleDot; return <Icon className="text-2xl text-kidOrange" />; })()}
-                    <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-100 px-2 py-0.5 rounded-full">
-                        {q.type.replace(/_/g, ' ')}
+            {/* Step progress with glowing capsules (Screenshot 3 & 5) */}
+            <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                    <span className="text-xs font-black text-[#0c3b6b]">{current + 1} / {questions.length}</span>
+                    <span className="text-xs font-black text-[#f26522] flex items-center gap-1">
+                        <FaStar className="fill-[#f26522] w-3.5 h-3.5" /> {answeredCount} Answered
                     </span>
                 </div>
+                {/* Segmented capsules */}
+                <div className="flex gap-1 items-center">
+                    {questions.map((ques, idx) => {
+                        const isCurrent = idx === current;
+                        const isDone = isAnswered(ques);
+                        return (
+                            <button
+                                key={ques.id || idx}
+                                type="button"
+                                onClick={() => setCurrent(idx)}
+                                className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                                    isCurrent
+                                        ? 'bg-[#f26522] ring-2 ring-orange-300 scale-y-125'
+                                        : isDone
+                                            ? 'bg-[#0c3b6b]'
+                                            : 'bg-gray-200'
+                                }`}
+                            />
+                        );
+                    })}
+                </div>
+            </div>
 
-                {q.resourceUrl && (
+            {/* Mascot speech bubble prompt (Screenshot 3) */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 border-2 border-white shadow-md flex items-center justify-center text-2xl shrink-0 animate-bounce-subtle">
+                    🦜
+                </div>
+                <button
+                    onClick={() => speakQuestion(q.text)}
+                    className="bg-white py-2 px-4 rounded-2xl rounded-tl-none shadow-[0_4px_12px_rgba(12,59,107,0.06)] border border-orange-100 flex items-center gap-2 hover:bg-orange-50 transition active:scale-95"
+                >
+                    <span className="text-xs font-black text-[#0c3b6b]">👆 Tap me to hear it!</span>
+                    <FaVolumeHigh className={`w-3.5 h-3.5 ${speaking ? 'text-[#f26522] animate-pulse' : 'text-gray-400'}`} />
+                </button>
+            </div>
+
+            {/* Question Illustration / Content Card */}
+            <div className="bg-white rounded-[28px] p-5 shadow-[0_6px_20px_rgba(12,59,107,0.06)] border border-orange-100 mb-5 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="text-[10px] font-black text-[#f26522] uppercase tracking-wider bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">
+                        {q.type?.replace(/_/g, ' ') || 'QUESTION'}
+                    </span>
+
+                    {/* Tap to listen pill */}
+                    <button
+                        onClick={() => speakQuestion(q.text)}
+                        className="bg-[#0c3b6b] text-white text-[11px] font-black px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm active:scale-95 transition"
+                    >
+                        <FaPlay className="w-2.5 h-2.5" /> Tap to listen
+                    </button>
+                </div>
+
+                {/* Media representation if available */}
+                {q.resourceUrl ? (
                     <div className="mb-4">
                         {q.resourceUrl.includes('.mp3') || q.resourceUrl.includes('.wav') ? (
-                            <button onClick={() => new Audio(q.resourceUrl).play()}
-                                className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg shadow-blue-300/40">
-                                <FaVolumeHigh className="w-8 h-8 text-white" />
+                            <button
+                                onClick={() => new Audio(q.resourceUrl).play()}
+                                className="w-16 h-16 mx-auto bg-gradient-to-br from-[#f26522] to-amber-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg text-white"
+                            >
+                                <FaVolumeHigh className="w-7 h-7" />
                             </button>
                         ) : (
-                            <img src={q.resourceUrl} alt="Question" className="w-full max-h-48 object-cover rounded-2xl" />
+                            <img src={q.resourceUrl} alt="Question" className="w-full max-h-44 object-contain rounded-2xl mx-auto" />
                         )}
+                    </div>
+                ) : (
+                    /* Playful book / prompt banner */
+                    <div className="w-full bg-[#f8fafc] rounded-2xl p-4 mb-4 border border-blue-50 text-center flex flex-col items-center justify-center">
+                        <span className="text-4xl mb-1">📖</span>
+                        <h2 className="text-xl font-black text-[#0c3b6b]">{q.text}</h2>
                     </div>
                 )}
 
-                <h1 className="text-2xl font-extrabold text-kidText mb-6 text-center leading-snug">{q.text}</h1>
+                {/* Interactive Question Content */}
                 {renderQuestion(q)}
             </div>
 
-            {/* Navigation */}
-            <div className="fixed bottom-24 left-0 w-full px-5">
-                <div className="flex gap-3">
-                    {current > 0 && (
-                        <button onClick={() => setCurrent(current - 1)}
-                            className="flex-1 kid-btn border-4 border-kidPrimary bg-white text-kidPrimary shadow-[0_6px_0_0_#2563eb] hover:bg-gray-50">
-                            <FaChevronLeft className="w-5 h-5" /> PREVIOUS
-                        </button>
-                    )}
-                    {!isLast ? (
-                        <button onClick={() => setCurrent(current + 1)}
-                            className="flex-1 kid-btn bg-kidPrimary shadow-[0_6px_0_0_#2563eb]">
-                            NEXT <FaChevronRight className="w-5 h-5" />
-                        </button>
-                    ) : (
-                        <button onClick={handleSubmit} disabled={submitting}
-                            className="flex-1 kid-btn lg:mx-64 bg-[#f26c24] shadow-[0_6px_0_0_#c2410c] disabled:opacity-50">
-                            <FaCircleCheck className="w-5 h-5" />
-                            {submitting ? 'SUBMITTING...' : 'FINISH'}
-                        </button>
-                    )}
-                </div>
+            {/* Primary Action Button (Submit / Next) */}
+            <div className="flex flex-col items-center justify-center my-6">
+                {!isLast ? (
+                    <button
+                        type="button"
+                        onClick={() => setCurrent(current + 1)}
+                        className="w-full max-w-sm bg-gradient-to-r from-[#f26522] to-amber-500 text-white font-black text-lg py-4 px-8 rounded-2xl shadow-[0_5px_0_0_#b54611] active:translate-y-1 active:shadow-none hover:brightness-105 transition flex items-center justify-center gap-3"
+                    >
+                        <span>NEXT QUESTION</span>
+                        <FaChevronRight className="w-5 h-5" />
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="w-full max-w-sm bg-gradient-to-r from-[#f26522] to-amber-500 text-white font-black text-lg py-4 px-8 rounded-2xl shadow-[0_5px_0_0_#b54611] active:translate-y-1 active:shadow-none hover:brightness-105 transition flex items-center justify-center gap-3 disabled:opacity-50"
+                    >
+                        <FaCircleCheck className="w-5 h-5" />
+                        <span>{submitting ? 'SUBMITTING...' : 'SUBMIT QUIZ'}</span>
+                    </button>
+                )}
+
+                {/* Question navigation helper */}
+                {current > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => setCurrent(current - 1)}
+                        className="mt-3 text-xs font-black text-[#0c3b6b] hover:text-[#f26522] flex items-center gap-1.5 py-1 px-3 rounded-full hover:bg-white/60 transition"
+                    >
+                        <FaChevronLeft className="w-3 h-3" /> Previous Question
+                    </button>
+                )}
             </div>
         </div>
     );
