@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     FaChevronLeft, FaCircleCheck, FaVolumeHigh, FaCirclePlay,
     FaFaceSmileBeam, FaFileLines, FaLock, FaArrowRight, FaTrophy, FaPause, FaPlay,
-    FaFilePdf, FaEye, FaArrowUpRightFromSquare, FaXmark, FaDownload
+    FaFilePdf, FaDownload, FaSpinner
 } from 'react-icons/fa6';
 import api from '../../services/api';
 
@@ -29,7 +29,8 @@ export default function LessonView() {
     const [locked, setLocked] = useState(false);
     const [nextLessonId, setNextLessonId] = useState(null);
     const [topicLessons, setTopicLessons] = useState([]);
-    const [activeDoc, setActiveDoc] = useState(null); // { url, title }
+    const [downloadingId, setDownloadingId] = useState(null);
+    const [failedDownloadIds, setFailedDownloadIds] = useState(new Set());
     const audioRef = useRef(null);
     const [audioState, setAudioState] = useState({ url: '', status: 'idle' });
 
@@ -51,6 +52,60 @@ export default function LessonView() {
         };
         fetchLesson();
     }, [id]);
+
+    const handleDownloadDoc = async (url, title, itemId) => {
+        const cleanUrl = normalizeDocUrl(url);
+        if (!cleanUrl) return;
+
+        setDownloadingId(itemId);
+
+        try {
+            // New uploads (raw type) are publicly accessible — open directly in browser.
+            // No proxy needed; the browser will download the file natively.
+            if (cleanUrl.includes('/raw/upload/')) {
+                const a = document.createElement('a');
+                a.href = cleanUrl;
+                a.target = '_blank';
+                a.rel = 'noreferrer';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return;
+            }
+
+            // Old image-type PDFs — try backend proxy (may fail due to Cloudinary restrictions)
+            let ext = cleanUrl.split('.').pop().split('?')[0].toLowerCase();
+            if (!ext || ext.length > 5 || ext.includes('/')) ext = 'pdf';
+            const safeTitle = (title || 'lesson-document')
+                .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+                .trim()
+                .replace(/\s+/g, '_');
+            const filename = `${safeTitle}.${ext}`;
+
+            const res = await api.get('/upload/download', {
+                params: { url: cleanUrl, filename },
+                responseType: 'blob',
+            });
+
+            // Clear any previous failure state for this item
+            setFailedDownloadIds(prev => { const next = new Set(prev); next.delete(itemId); return next; });
+
+            const blobUrl = window.URL.createObjectURL(res.data);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            console.error('Download failed:', err);
+            // Mark old image-type files as inaccessible
+            setFailedDownloadIds(prev => new Set([...prev, itemId]));
+        } finally {
+            setDownloadingId(null);
+        }
+    };
 
     const handleComplete = async () => {
         if (locked) {
@@ -158,15 +213,14 @@ export default function LessonView() {
                                     type="button"
                                     disabled={isLocked}
                                     onClick={() => !isLocked && navigate(`/student/lessons/${tl.id}`)}
-                                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black transition-all ${
-                                        isCurrent
+                                    className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black transition-all ${isCurrent
                                             ? 'bg-white text-[#f26522] shadow-md scale-105'
                                             : isDone
                                                 ? 'bg-green-400/30 text-white border border-green-300/40'
                                                 : isLocked
                                                     ? 'bg-white/10 text-white/50 cursor-not-allowed'
                                                     : 'bg-white/20 text-white hover:bg-white/30'
-                                    }`}
+                                        }`}
                                 >
                                     {isLocked ? <FaLock className="w-2.5 h-2.5" /> : isDone ? <FaCircleCheck className="w-3 h-3 text-green-300" /> : <span>{idx + 1}</span>}
                                     <span className="max-w-[90px] truncate">{tl.title || `Lesson ${idx + 1}`}</span>
@@ -239,7 +293,7 @@ export default function LessonView() {
                         if (item.type === 'AUDIO') return (
                             <div key={item.id} className="bg-white rounded-[28px] p-5 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60 text-center">
                                 <h3 className="font-black text-[#0c3b6b] text-[16px] mb-3">{item.description || 'Listen & Repeat'}</h3>
-                                
+
                                 <div className="flex items-center justify-center gap-3">
                                     <button
                                         onClick={() => handleAudioToggle(item.content)}
@@ -252,7 +306,7 @@ export default function LessonView() {
                                         )}
                                     </button>
                                 </div>
-                                
+
                                 <p className="text-[12px] font-bold text-gray-400 mt-3">
                                     {audioState.url === item.content && audioState.status === 'playing' ? 'Playing now 🎵' : 'Tap to play audio'}
                                 </p>
@@ -261,42 +315,59 @@ export default function LessonView() {
 
                         if (item.type === 'DOCUMENT') {
                             const docUrl = normalizeDocUrl(item.content);
+                            const isDownloading = downloadingId === item.id;
+                            const isFailed = failedDownloadIds.has(item.id);
                             return (
-                                <div key={item.id} className="bg-white rounded-[28px] p-4 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100 shrink-0">
-                                                <FaFilePdf className="text-2xl text-[#f26522]" />
+                                <div key={item.id} className={`bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border transition ${
+                                    isFailed ? 'border-amber-200 bg-amber-50/30' : 'border-orange-100/60 hover:border-orange-200'
+                                }`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 ${
+                                                isFailed ? 'bg-amber-50 border-amber-200' : 'bg-orange-50 border-orange-100'
+                                            }`}>
+                                                <FaFilePdf className={`text-2xl ${isFailed ? 'text-amber-500' : 'text-[#f26522]'}`} />
                                             </div>
                                             <div className="min-w-0">
-                                                <span className="font-black text-[#0c3b6b] text-[14px] truncate block">
+                                                <span className="font-black text-[#0c3b6b] text-[15px] truncate block">
                                                     {item.description || 'Lesson Document / Material'}
                                                 </span>
-                                                <span className="text-[11px] font-bold text-gray-400">
-                                                    PDF / Document Resource
-                                                </span>
+                                                {isFailed ? (
+                                                    <span className="text-[11px] font-bold text-amber-600 block mt-0.5">
+                                                        ⚠️ This file needs to be re-uploaded by your instructor
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[12px] font-bold text-gray-400 block mt-0.5">
+                                                        Downloadable Document Resource
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => setActiveDoc({ url: docUrl, title: item.description || lesson.title })}
-                                                className="text-xs font-black bg-blue-50 text-[#0c3b6b] hover:bg-blue-100 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5"
-                                                title="View document in app"
-                                            >
-                                                <FaEye className="w-3.5 h-3.5" /> View
-                                            </button>
-                                            <a
-                                                href={docUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="text-xs font-black bg-[#f26522] text-white px-3.5 py-2 rounded-xl hover:bg-orange-600 transition shadow-xs flex items-center gap-1"
-                                                title="Open in new window / download"
-                                            >
-                                                <FaArrowUpRightFromSquare className="w-3 h-3" />
-                                            </a>
-                                        </div>
+                                        <button
+                                            type="button"
+                                            disabled={isDownloading || isFailed}
+                                            onClick={() => handleDownloadDoc(docUrl, item.description || lesson.title, item.id)}
+                                            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 shrink-0 ${
+                                                isFailed
+                                                    ? 'bg-amber-100 text-amber-700 cursor-not-allowed opacity-70'
+                                                    : 'bg-[#f26522] text-white hover:bg-orange-600 cursor-pointer disabled:opacity-60'
+                                            }`}
+                                        >
+                                            {isDownloading ? (
+                                                <>
+                                                    <FaSpinner className="w-4 h-4 animate-spin" />
+                                                    <span>Downloading...</span>
+                                                </>
+                                            ) : isFailed ? (
+                                                <span>Unavailable</span>
+                                            ) : (
+                                                <>
+                                                    <FaDownload className="w-4 h-4" />
+                                                    <span>Download</span>
+                                                </>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             );
@@ -349,56 +420,6 @@ export default function LessonView() {
                     )}
                 </div>
             </div>
-
-            {/* ── In-App Document Viewer Modal ── */}
-            {activeDoc && (
-                <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm animate-fadeIn">
-                    <div className="bg-white rounded-[28px] w-full max-w-4xl h-[88vh] shadow-2xl flex flex-col overflow-hidden border border-gray-100">
-                        {/* Modal Header */}
-                        <div className="bg-gray-50 px-5 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                                <FaFilePdf className="text-xl text-[#f26522] shrink-0" />
-                                <h3 className="font-extrabold text-[#0c3b6b] text-sm sm:text-base truncate">
-                                    {activeDoc.title || 'Document Viewer'}
-                                </h3>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                                <a
-                                    href={activeDoc.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="p-2 text-[#0c3b6b] hover:bg-blue-50 rounded-xl transition text-xs font-bold flex items-center gap-1 border border-gray-200"
-                                    title="Open in new window"
-                                >
-                                    <FaArrowUpRightFromSquare className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">New Tab</span>
-                                </a>
-                                <button
-                                    onClick={() => setActiveDoc(null)}
-                                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
-                                    title="Close viewer"
-                                >
-                                    <FaXmark className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Document Frame */}
-                        <div className="flex-1 bg-gray-100 p-1 sm:p-2 relative overflow-hidden">
-                            <iframe
-                                src={
-                                    activeDoc.url.toLowerCase().endsWith('.pdf')
-                                        ? activeDoc.url
-                                        : `https://docs.google.com/viewer?url=${encodeURIComponent(activeDoc.url)}&embedded=true`
-                                }
-                                title="Document Viewer"
-                                className="w-full h-full rounded-2xl bg-white shadow-inner border-0"
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
