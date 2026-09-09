@@ -7,8 +7,7 @@ import { requireRole } from "../../middlewares/requireRole.js";
 
 const router = Router();
 
-// Configure Cloudinary
-// Configure Multer to use memory storage (so we don't save to local disk)
+// Configure Multer to use memory storage
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
@@ -29,20 +28,35 @@ router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), upload.sin
             return res.status(400).json({ message: "No file uploaded" });
         }
 
+        const originalName = req.file.originalname || "file";
+        const ext = originalName.includes(".") ? originalName.split(".").pop().toLowerCase() : "";
+        const isPdf = req.file.mimetype === "application/pdf" || ext === "pdf";
+        const isOfficeDoc = ["doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "csv", "epub"].includes(ext);
+
+        const uploadOptions = {
+            folder: "kuta_learning",
+            resource_type: isOfficeDoc ? "raw" : "auto",
+            use_filename: true,
+            unique_filename: true,
+            ...(isPdf && { format: "pdf" })
+        };
+
         // Upload to Cloudinary using upload_stream
         const uploadStream = cloudinary.uploader.upload_stream(
-            {
-                folder: "kuta_learning",
-                resource_type: "auto" // Automatically detect video/audio/image/raw
-            },
+            uploadOptions,
             (error, result) => {
                 if (error) {
                     console.error("Cloudinary upload error:", error);
                     return res.status(500).json({ message: "File upload failed", error: error.message });
                 }
 
-                // Return Cloudinary full URL
-                res.status(201).json({ url: result.secure_url });
+                let finalUrl = result.secure_url;
+                // If it was a PDF and URL doesn't have .pdf, ensure .pdf extension so Cloudinary serves it as application/pdf
+                if (isPdf && !finalUrl.toLowerCase().endsWith(".pdf")) {
+                    finalUrl = `${finalUrl}.pdf`;
+                }
+
+                res.status(201).json({ url: finalUrl });
             }
         );
 

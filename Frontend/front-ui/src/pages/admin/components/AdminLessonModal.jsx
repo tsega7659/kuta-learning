@@ -222,8 +222,18 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                                     <span className="font-bold text-[#0B3A63] text-sm">"{item.description}"</span>
                                                 )}
                                             </div>
-                                            <div className="text-gray-500 font-medium text-xs mt-1 bg-gray-50 p-2 rounded-lg border border-gray-100 truncate">
-                                                {item.content}
+                                            <div className="text-gray-500 font-medium text-xs mt-1 bg-gray-50 p-2 rounded-lg border border-gray-100 truncate flex items-center justify-between gap-2">
+                                                <span className="truncate">{item.content}</span>
+                                                {item.type !== 'TEXT' && (
+                                                    <a
+                                                        href={item.type === 'DOCUMENT' && item.content.includes('cloudinary.com') && !item.content.split('/').pop().includes('.') ? `${item.content}.pdf` : item.content}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-[11px] font-bold text-blue-600 hover:underline shrink-0 bg-blue-50 px-2 py-0.5 rounded"
+                                                    >
+                                                        Preview ↗
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex gap-1 shrink-0 transition">

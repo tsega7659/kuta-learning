@@ -2,9 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     FaChevronLeft, FaCircleCheck, FaVolumeHigh, FaCirclePlay,
-    FaFaceSmileBeam, FaFileLines, FaLock, FaArrowRight, FaTrophy, FaPause, FaPlay
+    FaFaceSmileBeam, FaFileLines, FaLock, FaArrowRight, FaTrophy, FaPause, FaPlay,
+    FaFilePdf, FaEye, FaArrowUpRightFromSquare, FaXmark, FaDownload
 } from 'react-icons/fa6';
 import api from '../../services/api';
+
+const normalizeDocUrl = (url) => {
+    if (!url) return '';
+    let clean = url.trim();
+    // Cloudinary PDF image URLs without extension convert multi-page PDF to single image.
+    // Appending .pdf forces Cloudinary to deliver the true PDF document.
+    if (clean.includes('cloudinary.com') && clean.includes('/image/upload/') && !clean.split('/').pop().includes('.')) {
+        clean = `${clean}.pdf`;
+    }
+    return clean;
+};
 
 export default function LessonView() {
     const { id } = useParams();
@@ -17,6 +29,7 @@ export default function LessonView() {
     const [locked, setLocked] = useState(false);
     const [nextLessonId, setNextLessonId] = useState(null);
     const [topicLessons, setTopicLessons] = useState([]);
+    const [activeDoc, setActiveDoc] = useState(null); // { url, title }
     const audioRef = useRef(null);
     const [audioState, setAudioState] = useState({ url: '', status: 'idle' });
 
@@ -101,30 +114,30 @@ export default function LessonView() {
         audioRef.current.play();
     };
 
-    const quizAvailable = lesson?.topic?.quizAvailable;
-    const quizzes = lesson?.topic?.quizzes || lesson?.topic?.quiz || [];
-
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[70vh]">
-                <div className="w-12 h-12 border-4 border-[#f26522] border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex min-h-[70vh] items-center justify-center">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#f26522] border-t-transparent"></div>
             </div>
         );
     }
 
+    const quizzes = lesson?.topic?.quizzes || lesson?.topic?.quiz || [];
+    const quizAvailable = !!lesson?.topic?.quizAvailable;
+
     return (
-        <div className="min-h-screen pb-32">
-            {/* Top Bar Header with Kuta Navy & Orange */}
-            <div className="bg-gradient-to-r from-[#0c3b6b] via-[#10477d] to-[#f26522] text-white pt-6 pb-5 px-4 rounded-b-[32px] shadow-[0_8px_20px_rgba(12,59,107,0.22)]">
-                <div className="flex items-center justify-between">
+        <div className="min-h-screen pb-32 font-sans text-gray-800">
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-[#0c3b6b] via-[#10477d] to-[#f26522] text-white pt-6 pb-6 px-4 rounded-b-[32px] shadow-[0_8px_25px_rgba(12,59,107,0.22)] sticky top-0 z-30">
+                <div className="flex items-center justify-between gap-3">
                     <button
                         onClick={() => navigate(-1)}
-                        className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition active:scale-95 shadow-sm"
+                        className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition active:scale-95 shadow-sm shrink-0"
                     >
                         <FaChevronLeft className="w-5 h-5" />
                     </button>
 
-                    <h1 className="text-[18px] font-black tracking-tight text-center truncate max-w-[220px]">
+                    <h1 className="text-[17px] font-black tracking-tight text-center truncate max-w-[220px]">
                         {lesson?.title || 'Lesson Content'}
                     </h1>
 
@@ -164,7 +177,7 @@ export default function LessonView() {
                 )}
             </div>
 
-            <div className="px-4 mt-5 space-y-4">
+            <div className="px-4 mt-5 space-y-4 max-w-2xl mx-auto">
                 {/* Cover Image if available */}
                 {lesson?.coverImage && (
                     <div className="w-full h-44 rounded-[28px] overflow-hidden shadow-soft border border-orange-100">
@@ -246,24 +259,48 @@ export default function LessonView() {
                             </div>
                         );
 
-                        if (item.type === 'DOCUMENT') return (
-                            <div key={item.id} className="bg-white rounded-[28px] p-4 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-11 h-11 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100">
-                                        <FaFileLines className="text-xl text-[#f26522]" />
+                        if (item.type === 'DOCUMENT') {
+                            const docUrl = normalizeDocUrl(item.content);
+                            return (
+                                <div key={item.id} className="bg-white rounded-[28px] p-4 shadow-[0_4px_18px_rgba(12,59,107,0.06)] border border-orange-100/60">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100 shrink-0">
+                                                <FaFilePdf className="text-2xl text-[#f26522]" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="font-black text-[#0c3b6b] text-[14px] truncate block">
+                                                    {item.description || 'Lesson Document / Material'}
+                                                </span>
+                                                <span className="text-[11px] font-bold text-gray-400">
+                                                    PDF / Document Resource
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveDoc({ url: docUrl, title: item.description || lesson.title })}
+                                                className="text-xs font-black bg-blue-50 text-[#0c3b6b] hover:bg-blue-100 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5"
+                                                title="View document in app"
+                                            >
+                                                <FaEye className="w-3.5 h-3.5" /> View
+                                            </button>
+                                            <a
+                                                href={docUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-xs font-black bg-[#f26522] text-white px-3.5 py-2 rounded-xl hover:bg-orange-600 transition shadow-xs flex items-center gap-1"
+                                                title="Open in new window / download"
+                                            >
+                                                <FaArrowUpRightFromSquare className="w-3 h-3" />
+                                            </a>
+                                        </div>
                                     </div>
-                                    <span className="font-black text-[#0c3b6b] text-[13px]">{item.description || 'Lesson Material'}</span>
                                 </div>
-                                <a
-                                    href={item.content}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-xs font-black bg-[#f26522] text-white px-4 py-2 rounded-full hover:bg-orange-600 transition shadow-sm"
-                                >
-                                    Open
-                                </a>
-                            </div>
-                        );
+                            );
+                        }
 
                         return null;
                     })
@@ -312,8 +349,56 @@ export default function LessonView() {
                     )}
                 </div>
             </div>
+
+            {/* ── In-App Document Viewer Modal ── */}
+            {activeDoc && (
+                <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-5 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-[28px] w-full max-w-4xl h-[88vh] shadow-2xl flex flex-col overflow-hidden border border-gray-100">
+                        {/* Modal Header */}
+                        <div className="bg-gray-50 px-5 py-3.5 border-b border-gray-100 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                <FaFilePdf className="text-xl text-[#f26522] shrink-0" />
+                                <h3 className="font-extrabold text-[#0c3b6b] text-sm sm:text-base truncate">
+                                    {activeDoc.title || 'Document Viewer'}
+                                </h3>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                                <a
+                                    href={activeDoc.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="p-2 text-[#0c3b6b] hover:bg-blue-50 rounded-xl transition text-xs font-bold flex items-center gap-1 border border-gray-200"
+                                    title="Open in new window"
+                                >
+                                    <FaArrowUpRightFromSquare className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">New Tab</span>
+                                </a>
+                                <button
+                                    onClick={() => setActiveDoc(null)}
+                                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition"
+                                    title="Close viewer"
+                                >
+                                    <FaXmark className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Document Frame */}
+                        <div className="flex-1 bg-gray-100 p-1 sm:p-2 relative overflow-hidden">
+                            <iframe
+                                src={
+                                    activeDoc.url.toLowerCase().endsWith('.pdf')
+                                        ? activeDoc.url
+                                        : `https://docs.google.com/viewer?url=${encodeURIComponent(activeDoc.url)}&embedded=true`
+                                }
+                                title="Document Viewer"
+                                className="w-full h-full rounded-2xl bg-white shadow-inner border-0"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
-
-
