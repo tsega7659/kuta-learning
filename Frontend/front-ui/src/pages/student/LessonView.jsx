@@ -44,6 +44,7 @@ export default function LessonView() {
                 setLocked(!!res.data.locked);
                 setNextLessonId(res.data.nextLessonId || null);
                 setTopicLessons(res.data.topicLessons || []);
+                setFailedDownloadIds(new Set());
             } catch (err) {
                 console.error(err);
             } finally {
@@ -58,49 +59,43 @@ export default function LessonView() {
         if (!cleanUrl) return;
 
         setDownloadingId(itemId);
+        setFailedDownloadIds(prev => { const next = new Set(prev); next.delete(itemId); return next; });
+
+        let ext = cleanUrl.split('.').pop().split('?')[0].toLowerCase();
+        if (!ext || ext.length > 5 || ext.includes('/')) ext = 'pdf';
+        const safeTitle = (title || 'lesson-document')
+            .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+            .trim()
+            .replace(/\s+/g, '_');
+        const filename = `${safeTitle}.${ext}`;
 
         try {
-            // New uploads (raw type) are publicly accessible — open directly in browser.
-            // No proxy needed; the browser will download the file natively.
-            if (cleanUrl.includes('/raw/upload/')) {
+            if (cleanUrl.includes('cloudinary.com')) {
+                const res = await api.get('/upload/download', {
+                    params: { url: cleanUrl, filename },
+                    responseType: 'blob',
+                });
+
+                const blobUrl = window.URL.createObjectURL(res.data);
                 const a = document.createElement('a');
-                a.href = cleanUrl;
-                a.target = '_blank';
-                a.rel = 'noreferrer';
+                a.href = blobUrl;
+                a.download = filename;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
                 return;
             }
 
-            // Old image-type PDFs — try backend proxy (may fail due to Cloudinary restrictions)
-            let ext = cleanUrl.split('.').pop().split('?')[0].toLowerCase();
-            if (!ext || ext.length > 5 || ext.includes('/')) ext = 'pdf';
-            const safeTitle = (title || 'lesson-document')
-                .replace(/[^a-zA-Z0-9_\-\s]/g, '')
-                .trim()
-                .replace(/\s+/g, '_');
-            const filename = `${safeTitle}.${ext}`;
-
-            const res = await api.get('/upload/download', {
-                params: { url: cleanUrl, filename },
-                responseType: 'blob',
-            });
-
-            // Clear any previous failure state for this item
-            setFailedDownloadIds(prev => { const next = new Set(prev); next.delete(itemId); return next; });
-
-            const blobUrl = window.URL.createObjectURL(res.data);
             const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = filename;
+            a.href = cleanUrl;
+            a.target = '_blank';
+            a.rel = 'noreferrer';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl);
         } catch (err) {
             console.error('Download failed:', err);
-            // Mark old image-type files as inaccessible
             setFailedDownloadIds(prev => new Set([...prev, itemId]));
         } finally {
             setDownloadingId(null);
@@ -334,7 +329,7 @@ export default function LessonView() {
                                                 </span>
                                                 {isFailed ? (
                                                     <span className="text-[11px] font-bold text-amber-600 block mt-0.5">
-                                                        ⚠️ This file needs to be re-uploaded by your instructor
+                                                        ⚠️ Download failed — tap Download to try again, or ask your instructor to re-upload
                                                     </span>
                                                 ) : (
                                                     <span className="text-[12px] font-bold text-gray-400 block mt-0.5">
@@ -346,11 +341,11 @@ export default function LessonView() {
 
                                         <button
                                             type="button"
-                                            disabled={isDownloading || isFailed}
+                                            disabled={isDownloading}
                                             onClick={() => handleDownloadDoc(docUrl, item.description || lesson.title, item.id)}
                                             className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2 shrink-0 ${
                                                 isFailed
-                                                    ? 'bg-amber-100 text-amber-700 cursor-not-allowed opacity-70'
+                                                    ? 'bg-amber-500 text-white hover:bg-amber-600 cursor-pointer'
                                                     : 'bg-[#f26522] text-white hover:bg-orange-600 cursor-pointer disabled:opacity-60'
                                             }`}
                                         >
@@ -360,7 +355,10 @@ export default function LessonView() {
                                                     <span>Downloading...</span>
                                                 </>
                                             ) : isFailed ? (
-                                                <span>Unavailable</span>
+                                                <>
+                                                    <FaDownload className="w-4 h-4" />
+                                                    <span>Retry Download</span>
+                                                </>
                                             ) : (
                                                 <>
                                                     <FaDownload className="w-4 h-4" />

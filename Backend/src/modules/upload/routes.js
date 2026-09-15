@@ -6,12 +6,24 @@ import https from "https";
 import http from "http";
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
+import {
+    UPLOAD_LIMITS_MB,
+    UPLOAD_MAX_BYTES,
+    getUploadLimitError,
+} from "../../config/uploadLimits.js";
 
 const router = Router();
 
 // Configure Multer to use memory storage
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: UPLOAD_MAX_BYTES },
+});
+
+router.get("/limits", authenticateToken, (req, res) => {
+    res.json({ limitsMb: UPLOAD_LIMITS_MB });
+});
 
 // Helper: configure cloudinary once
 const configureCloudinary = () => {
@@ -20,6 +32,84 @@ const configureCloudinary = () => {
         api_key: process.env.CLOUDINARY_API_KEY,
         api_secret: process.env.CLOUDINARY_API_SECRET
     });
+};
+
+const hasCloudinaryCredentials = () =>
+    Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+
+/** Parse a Cloudinary delivery URL into resource_type, public_id, and optional format. */
+const parseCloudinaryUrl = (url) => {
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split("/").filter(Boolean);
+    const uploadIdx = pathParts.indexOf("upload");
+    if (uploadIdx === -1) return null;
+
+    const resourceType = pathParts[uploadIdx - 1] || "image";
+    const afterUpload = pathParts.slice(uploadIdx + 1);
+    const startIdx = /^v\d+$/.test(afterUpload[0]) ? 1 : 0;
+    const publicIdParts = [...afterUpload.slice(startIdx)];
+    if (publicIdParts.length === 0) return null;
+
+    const lastPart = publicIdParts[publicIdParts.length - 1];
+    let format;
+    const dotIdx = lastPart.lastIndexOf(".");
+    if (dotIdx !== -1) {
+        format = lastPart.slice(dotIdx + 1).toLowerCase();
+        publicIdParts[publicIdParts.length - 1] = lastPart.slice(0, dotIdx);
+    }
+
+    const publicId = publicIdParts.join("/");
+    if (!publicId) return null;
+
+    return { resourceType, publicId, format };
+};
+
+const pipeRemoteFile = (targetUrl, res, safeFilename) =>
+    new Promise((resolve, reject) => {
+        const protocol = targetUrl.startsWith("https") ? https : http;
+        const req = protocol.get(targetUrl, (upstream) => {
+            if (upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
+                upstream.resume();
+                pipeRemoteFile(upstream.headers.location, res, safeFilename).then(resolve).catch(reject);
+                return;
+            }
+
+            if (upstream.statusCode !== 200) {
+                upstream.resume();
+                reject(new Error(`Upstream ${upstream.statusCode}`));
+                return;
+            }
+
+            if (!res.headersSent) {
+                res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
+                res.setHeader("Content-Type", upstream.headers["content-type"] || "application/octet-stream");
+                if (upstream.headers["content-length"]) {
+                    res.setHeader("Content-Length", upstream.headers["content-length"]);
+                }
+            }
+            upstream.pipe(res);
+            upstream.on("end", resolve);
+            upstream.on("error", reject);
+        });
+        req.on("error", reject);
+    });
+
+const buildSignedCloudinaryUrl = (parsed) => {
+    configureCloudinary();
+    const options = {
+        resource_type: parsed.resourceType,
+        sign_url: true,
+        secure: true,
+        type: "upload",
+        expires_at: Math.floor(Date.now() / 1000) + 300,
+    };
+    // Image-type PDFs need explicit format; raw assets should use public_id as stored.
+    if (parsed.resourceType === "image" && parsed.format) {
+        options.format = parsed.format;
+    } else if (parsed.resourceType === "image" && !parsed.format) {
+        options.format = "pdf";
+    }
+    return cloudinary.url(parsed.publicId, options);
 };
 
 /**
@@ -33,126 +123,74 @@ router.get("/download", authenticateToken, async (req, res) => {
             return res.status(400).json({ message: "Missing url query parameter" });
         }
 
-        // Validate it's a Cloudinary URL
         if (!url.includes("cloudinary.com")) {
             return res.status(400).json({ message: "Not a valid Cloudinary URL" });
         }
 
-        // Normalize: ensure PDF extension is present for image-type PDFs
         let targetUrl = url;
         if (targetUrl.includes("/image/upload/") && !targetUrl.split("/").pop().includes(".")) {
             targetUrl = `${targetUrl}.pdf`;
         }
 
-        console.log(`[download] Proxying: ${targetUrl}`);
-
-        // Fetch the file server-side — CORS doesn't apply to Node.js,
-        // so plain CDN URLs work here even if the browser gets 401/CORS blocked.
-        const protocol = targetUrl.startsWith("https") ? https : http;
         const safeFilename = (filename || "document.pdf").replace(/[^\w\-\.]/g, "_");
+        const parsed = parseCloudinaryUrl(targetUrl);
 
-        const proxyRequest = protocol.get(targetUrl, (upstream) => {
-            console.log(`[download] Cloudinary status: ${upstream.statusCode}`);
+        if (!parsed) {
+            return res.status(400).json({ message: "Could not parse Cloudinary URL" });
+        }
 
-            // Follow one redirect if needed
-            if (upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
-                const loc = upstream.headers.location;
-                const redirProtocol = loc.startsWith("https") ? https : http;
-                redirProtocol.get(loc, (redirected) => {
-                    res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
-                    res.setHeader("Content-Type", redirected.headers["content-type"] || "application/octet-stream");
-                    if (redirected.headers["content-length"]) res.setHeader("Content-Length", redirected.headers["content-length"]);
-                    redirected.pipe(res);
-                }).on("error", (err) => {
-                    console.error("[download] Redirect error:", err);
-                    if (!res.headersSent) res.status(502).json({ message: "Redirect failed" });
-                });
-                return;
+        const attempts = [];
+
+        if (hasCloudinaryCredentials()) {
+            try {
+                attempts.push(buildSignedCloudinaryUrl(parsed));
+            } catch (signErr) {
+                console.error("[download] Signed URL build failed:", signErr);
             }
+        } else {
+            console.warn("[download] Cloudinary API secret missing — signed downloads unavailable");
+        }
 
-            if (upstream.statusCode !== 200) {
-                console.error(`[download] Upstream ${upstream.statusCode} — trying signed URL fallback`);
-                upstream.resume();
+        attempts.push(targetUrl);
 
-                // Fallback: generate a signed URL via Cloudinary SDK
-                configureCloudinary();
-                try {
-                    const urlObj = new URL(targetUrl);
-                    const pathParts = urlObj.pathname.split("/").filter(Boolean);
-                    const uploadIdx = pathParts.indexOf("upload");
-                    if (uploadIdx === -1) throw new Error("No upload segment");
-
-                    const resourceType = pathParts[uploadIdx - 1] || "image";
-                    const afterUpload = pathParts.slice(uploadIdx + 1);
-                    const startIdx = /^v\d+$/.test(afterUpload[0]) ? 1 : 0;
-                    const publicIdParts = [...afterUpload.slice(startIdx)];
-                    const lastPart = publicIdParts[publicIdParts.length - 1];
-                    const dotIdx = lastPart.lastIndexOf(".");
-                    const ext = dotIdx !== -1 ? lastPart.slice(dotIdx + 1) : "pdf";
-                    if (dotIdx !== -1) publicIdParts[publicIdParts.length - 1] = lastPart.slice(0, dotIdx);
-                    const publicId = publicIdParts.join("/");
-
-                    const signedUrl = cloudinary.url(publicId, {
-                        resource_type: resourceType,
-                        sign_url: true,
-                        secure: true,
-                        type: "upload",
-                        expires_at: Math.floor(Date.now() / 1000) + 120,
-                        ...(ext && { format: ext }),
-                    });
-
-                    console.log(`[download] Signed fallback URL for public_id="${publicId}"`);
-
-                    const signedProtocol = signedUrl.startsWith("https") ? https : http;
-                    signedProtocol.get(signedUrl, (signedUpstream) => {
-                        console.log(`[download] Signed fallback status: ${signedUpstream.statusCode}`);
-                        if (signedUpstream.statusCode !== 200) {
-                            signedUpstream.resume();
-                            if (!res.headersSent) res.status(502).json({ message: `Cannot retrieve file (${signedUpstream.statusCode})` });
-                            return;
-                        }
-                        res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
-                        res.setHeader("Content-Type", signedUpstream.headers["content-type"] || "application/octet-stream");
-                        if (signedUpstream.headers["content-length"]) res.setHeader("Content-Length", signedUpstream.headers["content-length"]);
-                        signedUpstream.pipe(res);
-                    }).on("error", (err) => {
-                        console.error("[download] Signed fallback error:", err);
-                        if (!res.headersSent) res.status(502).json({ message: "Failed to retrieve file" });
-                    });
-                } catch (signErr) {
-                    console.error("[download] Signed URL generation failed:", signErr);
-                    if (!res.headersSent) res.status(502).json({ message: "File not accessible" });
-                }
+        let lastError = null;
+        for (const attemptUrl of attempts) {
+            try {
+                console.log(`[download] Trying: ${attemptUrl}`);
+                await pipeRemoteFile(attemptUrl, res, safeFilename);
                 return;
+            } catch (err) {
+                lastError = err;
+                if (res.headersSent) return;
+                console.error(`[download] Attempt failed: ${err.message}`);
             }
+        }
 
-            res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
-            res.setHeader("Content-Type", upstream.headers["content-type"] || "application/octet-stream");
-            if (upstream.headers["content-length"]) res.setHeader("Content-Length", upstream.headers["content-length"]);
-            upstream.pipe(res);
-        });
-
-        proxyRequest.on("error", (err) => {
-            console.error("[download] Proxy error:", err);
-            if (!res.headersSent) res.status(502).json({ message: "Failed to reach Cloudinary" });
-        });
-
+        if (!res.headersSent) {
+            res.status(502).json({
+                message: hasCloudinaryCredentials()
+                    ? "File not accessible on Cloudinary. Ask your instructor to re-upload the document."
+                    : "Download service is not configured (Cloudinary credentials missing on server).",
+                detail: lastError?.message,
+            });
+        }
     } catch (err) {
         console.error("[download] Route error:", err);
         if (!res.headersSent) res.status(500).json({ message: "Server error", error: err.message });
     }
 });
 
-/**
- * POST /api/upload
- * Expects multipart form data with a 'file' field
- */
-router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), upload.single("file"), (req, res) => {
+const handleUpload = (req, res) => {
     try {
         configureCloudinary();
 
         if (!req.file) {
             return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const limitError = getUploadLimitError(req.file);
+        if (limitError) {
+            return res.status(413).json({ message: limitError });
         }
 
         const originalName = req.file.originalname || "file";
@@ -179,12 +217,13 @@ router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), upload.sin
                 }
 
                 let finalUrl = result.secure_url;
-                // If it was a PDF and URL doesn't have .pdf, ensure .pdf extension so Cloudinary serves it as application/pdf
-                if (isPdf && !finalUrl.toLowerCase().endsWith(".pdf")) {
+                // Legacy image-type PDFs need .pdf suffix for correct delivery.
+                // Raw uploads must keep Cloudinary's URL unchanged.
+                if (isPdf && result.resource_type === "image" && !finalUrl.toLowerCase().endsWith(".pdf")) {
                     finalUrl = `${finalUrl}.pdf`;
                 }
 
-                res.status(201).json({ url: finalUrl });
+                res.status(201).json({ url: finalUrl, resourceType: result.resource_type });
             }
         );
 
@@ -194,6 +233,27 @@ router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), upload.sin
     } catch (err) {
         res.status(500).json({ message: "File upload failed", error: err.message });
     }
+};
+
+/**
+ * POST /api/upload
+ * Expects multipart form data with a 'file' field
+ */
+router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), (req, res) => {
+    upload.single("file")(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+                return res.status(413).json({
+                    message: `File is too large. Maximum allowed size is ${UPLOAD_LIMITS_MB.video} MB for videos and lower limits for other types.`,
+                });
+            }
+            return res.status(400).json({ message: err.message });
+        }
+        if (err) {
+            return res.status(500).json({ message: "File upload failed", error: err.message });
+        }
+        handleUpload(req, res);
+    });
 });
 
 export default router;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../../services/api';
+import { validateFileByKind } from '../../../constants/uploadLimits';
 import {
     XMarkIcon, PlusIcon, TrashIcon, PencilIcon, CheckIcon, ChevronUpIcon, ChevronDownIcon,
 } from '@heroicons/react/24/outline';
@@ -23,6 +24,8 @@ export default function AdminQuizBuilder({ courseId, chapterId, topicId, topicNa
 
     const uploadFile = async (file) => {
         if (!file) return null;
+        const sizeErr = validateFileByKind(file);
+        if (sizeErr) throw new Error(sizeErr);
         const formData = new FormData();
         formData.append('file', file);
         const res = await api.post('/upload', formData, {

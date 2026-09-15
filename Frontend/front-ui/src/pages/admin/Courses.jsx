@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../../services/api';
+import { validateImageFile, UPLOAD_LIMITS_MB } from '../../constants/uploadLimits';
 import {
     PlusIcon, PencilIcon, PlayCircleIcon, DocumentCheckIcon,
     QuestionMarkCircleIcon, QueueListIcon, ChevronRightIcon, XMarkIcon,
@@ -31,6 +32,7 @@ function CoverUpload({ preview, onFile }) {
                 <span className="text-sm font-bold text-gray-500">{preview ? 'Change image' : 'Upload cover image'}</span>
             </div>
             <input ref={ref} type="file" accept="image/*" className="hidden" onChange={e => onFile(e.target.files[0])} />
+            <p className="text-[10px] text-gray-400 font-bold mt-1">Max cover image size: {UPLOAD_LIMITS_MB.image} MB</p>
         </div>
     );
 }
@@ -85,6 +87,13 @@ export default function AdminCourses() {
     const resetCover = () => { setCoverFile(null); setCoverPreview(null); };
 
     const setFileWithPreview = (file) => {
+        if (file) {
+            const sizeErr = validateImageFile(file);
+            if (sizeErr) {
+                alert(sizeErr);
+                return;
+            }
+        }
         setCoverFile(file);
         if (file) setCoverPreview(URL.createObjectURL(file));
         else setCoverPreview(null);

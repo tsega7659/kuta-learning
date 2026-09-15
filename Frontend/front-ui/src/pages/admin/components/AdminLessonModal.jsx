@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../../../services/api';
+import { validateFileForLessonType, limitHintForLessonType } from '../../../constants/uploadLimits';
 import { XMarkIcon, PlusIcon, TrashIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 const TYPE_ICONS = {
@@ -60,6 +61,11 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
         try {
             let finalContent = content;
             if (type !== 'TEXT' && file) {
+                const sizeErr = validateFileForLessonType(file, type);
+                if (sizeErr) {
+                    alert(sizeErr);
+                    return;
+                }
                 finalContent = await uploadFile(file);
             }
             await api.post(contentsUrl, { type, content: finalContent, description, order: contents.length + 1 });
@@ -70,7 +76,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
             await fetchContents();
         } catch (err) {
             console.error(err);
-            alert('Failed to add content.');
+            alert(err.response?.data?.message || 'Failed to add content.');
         } finally {
             setSubmitting(false);
         }
@@ -97,6 +103,11 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
         try {
             let finalContent = editContent;
             if (item.type !== 'TEXT' && editFile) {
+                const sizeErr = validateFileForLessonType(editFile, item.type);
+                if (sizeErr) {
+                    alert(sizeErr);
+                    return;
+                }
                 finalContent = await uploadFile(editFile);
             }
             await api.put(`${contentsUrl}/${item.id}`, {
@@ -107,7 +118,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
             cancelEdit();
             await fetchContents();
         } catch (err) {
-            alert('Failed to update content.');
+            alert(err.response?.data?.message || 'Failed to update content.');
         } finally {
             setEditSaving(false);
         }
@@ -191,6 +202,7 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                                     }
                                                 />
                                                 <p className="text-[10px] text-gray-400 font-bold">Leave file empty to keep the current content URL.</p>
+                                                <p className="text-[10px] text-gray-400 font-bold">{limitHintForLessonType(item.type)}</p>
                                             </div>
                                         )}
                                         <div className="flex gap-2 justify-end">
@@ -301,18 +313,33 @@ export default function AdminLessonModal({ courseId, chapterId, topicId, lesson,
                                     required
                                 />
                             ) : (
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={e => setFile(e.target.files[0])}
-                                    className="flex-1 px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-[#0B3A63] text-sm focus:border-[#0F4C81] outline-none"
-                                    required
-                                    accept={
-                                        type === 'IMAGE' ? 'image/*' :
-                                            type === 'VIDEO' ? 'video/*' :
-                                                type === 'AUDIO' ? 'audio/*' : '*'
-                                    }
-                                />
+                                <div className="flex-1 min-w-0">
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={e => {
+                                            const f = e.target.files?.[0] || null;
+                                            if (f) {
+                                                const sizeErr = validateFileForLessonType(f, type);
+                                                if (sizeErr) {
+                                                    alert(sizeErr);
+                                                    e.target.value = '';
+                                                    setFile(null);
+                                                    return;
+                                                }
+                                            }
+                                            setFile(f);
+                                        }}
+                                        className="w-full px-3 py-2.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-medium text-[#0B3A63] text-sm focus:border-[#0F4C81] outline-none"
+                                        required
+                                        accept={
+                                            type === 'IMAGE' ? 'image/*' :
+                                                type === 'VIDEO' ? 'video/*' :
+                                                    type === 'AUDIO' ? 'audio/*' : '*'
+                                        }
+                                    />
+                                    <p className="text-[10px] text-gray-400 font-bold mt-1 px-1">{limitHintForLessonType(type)}</p>
+                                </div>
                             )}
 
                             <button
