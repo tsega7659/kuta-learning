@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Seeding database...');
+    console.log(' Seeding database...');
 
     // Clean existing data
     await prisma.quizAnswer.deleteMany();
@@ -21,11 +21,9 @@ async function main() {
     await prisma.studentProfile.deleteMany();
     await prisma.user.deleteMany();
 
-    console.log('🧹 Cleaned existing data');
+    console.log(' Cleaned existing data');
 
-    // ============================================================
     // 1. CREATE CONTENT MANAGER (ADMIN)
-    // ============================================================
     const adminHash = await bcrypt.hash('admin123', 10);
     await prisma.user.create({
         data: {
@@ -34,11 +32,10 @@ async function main() {
             role: 'CONTENT_MANAGER',
         },
     });
-    console.log('👤 Admin created: admin@kuta.com / admin123');
+    console.log(' Admin created: admin@kuta.com / admin123');
 
-    // ============================================================
+
     // 2. CREATE SAMPLE STUDENTS
-    // ============================================================
     const studentHash = await bcrypt.hash('student123', 10);
 
     await prisma.user.create({
@@ -74,16 +71,14 @@ async function main() {
         },
     });
 
-    console.log('👧 Students created: abebe@kuta.com, sara@kuta.com, dawit@kuta.com (password: student123)');
+    console.log(' Students created: abebe@kuta.com, sara@kuta.com, dawit@kuta.com (password: student123)');
 
-    console.log('\n✅ Seeding complete!');
-    console.log('====================================');
-    console.log('📧 Admin Login:   admin@kuta.com / admin123');
-    console.log('📧 Student Login: abebe@kuta.com / student123');
-    console.log('📧 Student Login: sara@kuta.com  / student123');
-    console.log('📧 Student Login: dawit@kuta.com / student123');
-    console.log('====================================');
-    console.log('📚 No courses, lessons, topics, quizzes, or mock exams seeded.');
+    console.log('\n Seeding complete!');
+    console.log(' Admin Login:   admin@kuta.com / admin123');
+    console.log(' Student Login: abebe@kuta.com / student123');
+    console.log(' Student Login: sara@kuta.com  / student123');
+    console.log(' Student Login: dawit@kuta.com / student123');
+    console.log(' No courses, lessons, topics, quizzes, or mock exams seeded.');
 }
 
 main()

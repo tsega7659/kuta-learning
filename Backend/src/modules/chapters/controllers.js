@@ -1,6 +1,5 @@
 import { prisma } from "../../prisma.js";
 
-// GET /api/courses/:courseId/chapters
 export const getChapters = async (req, res) => {
     try {
         const chapters = await prisma.chapter.findMany({
@@ -14,7 +13,6 @@ export const getChapters = async (req, res) => {
     }
 };
 
-// POST /api/courses/:courseId/chapters
 export const createChapter = async (req, res) => {
     let { title, description, coverImage, order } = req.body;
     try {
@@ -41,7 +39,6 @@ export const createChapter = async (req, res) => {
     }
 };
 
-// PUT /api/courses/:courseId/chapters/:id (we can just use /api/chapters/:id directly in the future, but it works here)
 export const updateChapter = async (req, res) => {
     const { title, description, coverImage, order } = req.body;
     try {

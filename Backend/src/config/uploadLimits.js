@@ -1,9 +1,8 @@
-/** Max upload sizes for course / lesson media (bytes). Enforced on POST /api/upload */
 export const UPLOAD_LIMITS_BYTES = {
-    image: 10 * 1024 * 1024,      // 10 MB
-    document: 20 * 1024 * 1024,   // 20 MB
-    audio: 25 * 1024 * 1024,      // 25 MB
-    video: 100 * 1024 * 1024,     // 100 MB
+    image: 10 * 1024 * 1024,
+    document: 20 * 1024 * 1024,
+    audio: 25 * 1024 * 1024,
+    video: 100 * 1024 * 1024,
 };
 
 export const UPLOAD_LIMITS_MB = {
@@ -13,7 +12,6 @@ export const UPLOAD_LIMITS_MB = {
     video: 100,
 };
 
-/** Hard ceiling for multer (largest allowed type). */
 export const UPLOAD_MAX_BYTES = Math.max(...Object.values(UPLOAD_LIMITS_BYTES));
 
 const DOCUMENT_EXTENSIONS = new Set([

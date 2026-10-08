@@ -12,7 +12,6 @@ import {
 
 const router = express.Router();
 
-// All practice routes are for students (authenticated)
 router.use(authenticateToken);
 
 router.get("/random-question", getRandomQuestion);

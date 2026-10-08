@@ -9,15 +9,13 @@ import {
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import { optionalAuth } from "../../middlewares/optionalAuth.js";
-import chapterRoutes from "../chapters/routes.js"; // allow nesting chapters inside courses
+import chapterRoutes from "../chapters/routes.js";
 
 const router = Router();
 
-// Public routes (anyone can see available courses)
 router.get("/", optionalAuth, getAllCourses);
 router.get("/:id", optionalAuth, getCourseById);
 
-// Admin / Content Manager routes
 router.use(authenticateToken);
 router.use(requireRole(["CONTENT_MANAGER"]));
 
@@ -25,7 +23,6 @@ router.post("/", createCourse);
 router.put("/:id", updateCourse);
 router.delete("/:id", deleteCourse);
 
-// Nested routes: /api/courses/:courseId/chapters -> handled by chapters router
 router.use("/:courseId/chapters", chapterRoutes);
 
 export default router;

@@ -18,7 +18,7 @@ import {
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 
-const router = Router({ mergeParams: true }); // Extends from topicId
+const router = Router({ mergeParams: true });
 
 // ---- Quiz meta ----
 router.get("/", authenticateToken, getQuiz);

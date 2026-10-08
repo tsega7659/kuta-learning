@@ -1,0 +1,1996 @@
+{
+	"info": {
+		"_postman_id": "8c37d402-e251-4d37-9759-e93cf82d5a31",
+		"name": "Kuta Learning API",
+		"description": "Comprehensive Postman collection for Kuta Learning backend API covering Authentication, Courses, Chapters, Topics, Lessons, Content, Quizzes, Practice, Progress, Students management, and Uploads.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://kuta-learning.onrender.com",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "courseId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "chapterId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "topicId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "lessonId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "contentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "quizId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "questionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "optionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "attemptId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "studentId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						""
+					]
+				},
+				"description": "Simple health-check endpoint to verify if the server is running."
+			},
+			"response": []
+		},
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register Student",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.token) {",
+									"        pm.collectionVariables.set('token', res.token);",
+									"        console.log('Token saved to collection variable');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Abebe Bikila\",\n  \"gradeLevel\": 8\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registers a new student account. Automatically saves returned JWT token to {{token}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Student or Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const res = pm.response.json();",
+									"    if (res.token) {",
+									"        pm.collectionVariables.set('token', res.token);",
+									"        console.log('Token saved to collection variable: ', res.token);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticates user and saves JWT token to collection variable {{token}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Profile (/me)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Returns current authenticated user profile."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password Check",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						},
+						"description": "Checks if account exists for password reset flow."
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"student@example.com\",\n  \"password\": \"newPassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"reset-password"
+							]
+						},
+						"description": "Resets the password for given email address."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Courses",
+			"item": [
+				{
+					"name": "Get All Courses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses"
+							]
+						},
+						"description": "Public / Authenticated endpoint. If student token is provided, returns progress and quiz scores."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}"
+							]
+						},
+						"description": "Gets single course tree: chapters, topics, lessons, quizzes and locked/completed statuses."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course (Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('courseId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Grade 8 Mathematics\",\n  \"description\": \"Comprehensive Grade 8 Ethiopian curriculum mathematics\",\n  \"coverImage\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n  \"gradeLevel\": 8\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses"
+							]
+						},
+						"description": "Creates a new course (Requires CONTENT_MANAGER role). Saves ID to {{courseId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course (Content Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Grade 8 Mathematics (Updated)\",\n  \"description\": \"Updated description\",\n  \"coverImage\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n  \"gradeLevel\": 8\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}"
+							]
+						},
+						"description": "Updates course details (CONTENT_MANAGER role required)."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Course (Content Manager)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}"
+							]
+						},
+						"description": "Deletes course by ID (CONTENT_MANAGER role required)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Chapters",
+			"item": [
+				{
+					"name": "Get Chapters in Course",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters"
+							]
+						},
+						"description": "Lists all chapters within a given course."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Chapter (Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('chapterId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Chapter 1: Rational Numbers\",\n  \"description\": \"Understanding rational and irrational numbers\",\n  \"coverImage\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters"
+							]
+						},
+						"description": "Creates a new chapter. Saves ID to {{chapterId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Chapter (Content Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Chapter 1: Rational Numbers (Updated)\",\n  \"description\": \"Updated chapter description\",\n  \"coverImage\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}"
+							]
+						},
+						"description": "Updates chapter details."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Chapter (Content Manager)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}"
+							]
+						},
+						"description": "Deletes chapter by ID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Topics",
+			"item": [
+				{
+					"name": "Get Topics in Chapter",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics"
+							]
+						},
+						"description": "Fetches all topics inside a chapter."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Topic (Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('topicId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Topic 1.1: Square Roots and Cube Roots\",\n  \"description\": \"Basic operations on roots\",\n  \"coverImage\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics"
+							]
+						},
+						"description": "Creates a new topic in a chapter. Saves ID to {{topicId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Topic (Content Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Topic 1.1: Square Roots and Cube Roots (Updated)\",\n  \"description\": \"Updated description\",\n  \"coverImage\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}"
+							]
+						},
+						"description": "Updates a topic."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Topic (Content Manager)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}"
+							]
+						},
+						"description": "Deletes topic by ID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Lessons",
+			"item": [
+				{
+					"name": "Get Lessons in Topic",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons"
+							]
+						},
+						"description": "Gets all lessons with contents inside a topic."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Lesson View with Student Status (Flat Route)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/lessons/{{lessonId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"lessons",
+								"{{lessonId}}"
+							]
+						},
+						"description": "Student lesson viewer endpoint. Returns ordered contents, completion status, locked status, next lesson ID, and quiz unlock status."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lesson (Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('lessonId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Lesson 1: Introduction to Square Roots\",\n  \"description\": \"Definition and examples of perfect squares\",\n  \"coverImage\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons"
+							]
+						},
+						"description": "Creates a new lesson. Saves ID to {{lessonId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Lesson (Content Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Lesson 1: Introduction to Square Roots (Updated)\",\n  \"description\": \"Updated description\",\n  \"coverImage\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons/{{lessonId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons",
+								"{{lessonId}}"
+							]
+						},
+						"description": "Updates a lesson."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Lesson (Content Manager)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons/{{lessonId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons",
+								"{{lessonId}}"
+							]
+						},
+						"description": "Deletes lesson by ID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Lesson Content",
+			"item": [
+				{
+					"name": "Get Lesson Contents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons/{{lessonId}}/contents",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons",
+								"{{lessonId}}",
+								"contents"
+							]
+						},
+						"description": "Fetches content items (TEXT, VIDEO, PDF, AUDIO, IMAGE) for a lesson."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Lesson Content (TEXT / VIDEO / PDF)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('contentId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"TEXT\",\n  \"content\": \"# Square Roots\\nA square root of a number is a value that, when multiplied by itself, gives the number.\",\n  \"description\": \"Introduction note\",\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons/{{lessonId}}/contents",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons",
+								"{{lessonId}}",
+								"contents"
+							]
+						},
+						"description": "Adds content item to a lesson. Supported types: TEXT, VIDEO, PDF, AUDIO, IMAGE. Saves ID to {{contentId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Lesson Content",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"TEXT\",\n  \"content\": \"# Square Roots (Updated)\\nUpdated markdown explanation.\",\n  \"description\": \"Updated note\",\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons/{{lessonId}}/contents/{{contentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons",
+								"{{lessonId}}",
+								"contents",
+								"{{contentId}}"
+							]
+						},
+						"description": "Updates content item."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Lesson Content",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/lessons/{{lessonId}}/contents/{{contentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"lessons",
+								"{{lessonId}}",
+								"contents",
+								"{{contentId}}"
+							]
+						},
+						"description": "Deletes content item."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Topic Quizzes & Question Bank",
+			"item": [
+				{
+					"name": "Get Topic Quiz",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz"
+							]
+						},
+						"description": "Fetches quiz for a topic. For students, correct answers are hidden."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Topic Quiz Availability",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/availability",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"availability"
+							]
+						},
+						"description": "Checks if student has completed all topic lessons and if the quiz is unlocked."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Attempts for Quiz",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/attempts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"attempts"
+							]
+						},
+						"description": "Returns list of student attempts for the topic quiz."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Topic Quiz / Bank (Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('quizId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Topic 1.1 Assessment Quiz\",\n  \"description\": \"End of topic quiz\",\n  \"passingScore\": 70\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz"
+							]
+						},
+						"description": "Creates a quiz for this topic. Saves ID to {{quizId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Quiz (Content Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Topic 1.1 Assessment Quiz (Updated)\",\n  \"description\": \"Updated description\",\n  \"passingScore\": 75\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}"
+							]
+						},
+						"description": "Updates quiz meta details."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Quiz (Content Manager)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}"
+							]
+						},
+						"description": "Deletes quiz and all nested questions."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Question to Quiz (Content Manager)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('questionId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"SINGLE_CHOICE\",\n  \"text\": \"What is the square root of 64?\",\n  \"explanation\": \"Because 8 * 8 = 64\",\n  \"resourceUrl\": null,\n  \"order\": 1,\n  \"options\": [\n    { \"text\": \"6\", \"isCorrect\": false },\n    { \"text\": \"8\", \"isCorrect\": true },\n    { \"text\": \"10\", \"isCorrect\": false },\n    { \"text\": \"12\", \"isCorrect\": false }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/questions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"questions"
+							]
+						},
+						"description": "Adds a question with options. Types: SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, MATCHING, WORD_ORDER, FILL_IN_BLANK, DRAG_AND_DROP, COLOR_MATCH. Saves ID to {{questionId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Question",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"SINGLE_CHOICE\",\n  \"text\": \"What is the square root of 64? (Updated)\",\n  \"explanation\": \"8 squared equals 64\",\n  \"resourceUrl\": null,\n  \"order\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/questions/{{questionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"questions",
+								"{{questionId}}"
+							]
+						},
+						"description": "Updates question details."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Question",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/questions/{{questionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"questions",
+								"{{questionId}}"
+							]
+						},
+						"description": "Deletes question by ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Option to Question",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('optionId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"16\",\n  \"isCorrect\": false,\n  \"imageUrl\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/questions/{{questionId}}/options",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"questions",
+								"{{questionId}}",
+								"options"
+							]
+						},
+						"description": "Adds an option to a question. Saves ID to {{optionId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Option",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"16 (Incorrect)\",\n  \"isCorrect\": false,\n  \"imageUrl\": null\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/questions/{{questionId}}/options/{{optionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"questions",
+								"{{questionId}}",
+								"options",
+								"{{optionId}}"
+							]
+						},
+						"description": "Updates option text or correctness."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Option",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/questions/{{questionId}}/options/{{optionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"questions",
+								"{{questionId}}",
+								"options",
+								"{{optionId}}"
+							]
+						},
+						"description": "Deletes option by ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Start Quiz Attempt (Nested)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"start"
+							]
+						},
+						"description": "Verifies lesson completion and starts quiz session."
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Quiz Attempt (Nested)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"answers\": [\n    {\n      \"questionId\": \"{{questionId}}\",\n      \"selectedOptionId\": \"{{optionId}}\",\n      \"selectedOptionIds\": [],\n      \"textResponse\": null\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/courses/{{courseId}}/chapters/{{chapterId}}/topics/{{topicId}}/quiz/{{quizId}}/submit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"courses",
+								"{{courseId}}",
+								"chapters",
+								"{{chapterId}}",
+								"topics",
+								"{{topicId}}",
+								"quiz",
+								"{{quizId}}",
+								"submit"
+							]
+						},
+						"description": "Submits quiz answers and calculates grade / pass status."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. Flat Quizzes & Attempts",
+			"item": [
+				{
+					"name": "Get Quiz by ID (Flat Route)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/quizzes/{{quizId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"{{quizId}}"
+							]
+						},
+						"description": "Fetches quiz with safe options for student."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quiz by Topic ID (Flat Route)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/quizzes/topic/{{topicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"topic",
+								"{{topicId}}"
+							]
+						},
+						"description": "Fetches quiz for a given topic directly."
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Quiz by Quiz ID (Flat Route)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const res = pm.response.json();",
+									"    if (res.id) {",
+									"        pm.collectionVariables.set('attemptId', res.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"answers\": [\n    {\n      \"questionId\": \"{{questionId}}\",\n      \"selectedOptionId\": \"{{optionId}}\",\n      \"selectedOptionIds\": [],\n      \"textResponse\": null\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/quizzes/{{quizId}}/submit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"{{quizId}}",
+								"submit"
+							]
+						},
+						"description": "Submits quiz attempt directly by quiz ID. Saves returned attempt ID to {{attemptId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quiz Attempt Review (/api/quizzes/attempts/:id)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/quizzes/attempts/{{attemptId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"quizzes",
+								"attempts",
+								"{{attemptId}}"
+							]
+						},
+						"description": "Returns full review breakdown of a submitted quiz attempt including correct answers, user choices, and explanations."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Quiz Attempt Review (/api/quiz-attempts/:id)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/quiz-attempts/{{attemptId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"quiz-attempts",
+								"{{attemptId}}"
+							]
+						},
+						"description": "Alternate endpoint to fetch quiz attempt review."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "9. Practice Module",
+			"item": [
+				{
+					"name": "Get Random Question (Parent Gate)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/random-question",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"random-question"
+							]
+						},
+						"description": "Fetches a single random question for parental verification gate."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Random Question (Parent Gate)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"questionId\": \"{{questionId}}\",\n  \"selectedOptionId\": \"{{optionId}}\",\n  \"selectedOptionIds\": []\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/random-question/verify",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"random-question",
+								"verify"
+							]
+						},
+						"description": "Verifies whether the answer to the parental gate question is correct."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Practice Topics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/topics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"topics"
+							]
+						},
+						"description": "Returns list of topics that have practice questions in their question bank."
+					},
+					"response": []
+				},
+				{
+					"name": "Start Practice Module for Topic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const res = pm.response.json();",
+									"    if (res.attemptId) {",
+									"        pm.collectionVariables.set('attemptId', res.attemptId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/topics/{{topicId}}/start",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"topics",
+								"{{topicId}}",
+								"start"
+							]
+						},
+						"description": "Creates a new practice attempt with up to 10 randomized bank questions. Saves attempt ID to {{attemptId}}."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Practice Attempt",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/attempts/{{attemptId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"attempts",
+								"{{attemptId}}"
+							]
+						},
+						"description": "Fetches the practice questions for the active/submitted practice attempt."
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Practice Attempt",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"answers\": [\n    {\n      \"questionId\": \"{{questionId}}\",\n      \"selectedOptionId\": \"{{optionId}}\",\n      \"selectedOptionIds\": [],\n      \"textResponse\": null\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/attempts/{{attemptId}}/submit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"attempts",
+								"{{attemptId}}",
+								"submit"
+							]
+						},
+						"description": "Submits answers for a practice attempt and grades score."
+					},
+					"response": []
+				},
+				{
+					"name": "Preview Mock Exam Questions (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"topicIds\": [\"{{topicId}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/practice/preview",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"practice",
+								"preview"
+							]
+						},
+						"description": "Admin endpoint to preview questions from question bank for specified topic IDs."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "10. Student Progress",
+			"item": [
+				{
+					"name": "Get Course Progress",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/progress/courses/{{courseId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"progress",
+								"courses",
+								"{{courseId}}"
+							]
+						},
+						"description": "Returns total lessons, completed lessons, and completion percentage for the student in a course."
+					},
+					"response": []
+				},
+				{
+					"name": "Log Lesson Completion",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/progress/lessons/{{lessonId}}/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"progress",
+								"lessons",
+								"{{lessonId}}",
+								"complete"
+							]
+						},
+						"description": "Marks a lesson as completed for the authenticated student, unlocking the subsequent lesson."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "11. Students Management",
+			"item": [
+				{
+					"name": "Get All Students (Content Manager)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students"
+							]
+						},
+						"description": "Lists all registered students with profile details and activity counters (CONTENT_MANAGER role required)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Student Details (Content Manager)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/students/{{studentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"students",
+								"{{studentId}}"
+							]
+						},
+						"description": "Fetches detailed progress, quiz attempts, and profile of a student (CONTENT_MANAGER role required)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "12. Upload & Media",
+			"item": [
+				{
+					"name": "Get Upload Limits",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/upload/limits",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"upload",
+								"limits"
+							]
+						},
+						"description": "Returns configured maximum file upload sizes per media type in megabytes."
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Media / Document (Content Manager)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/upload",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"upload"
+							]
+						},
+						"description": "Uploads an image, video, audio, or PDF file to Cloudinary. Returns secure delivery URL and resourceType."
+					},
+					"response": []
+				},
+				{
+					"name": "Proxy File Download",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/upload/download?url=https%3A%2F%2Fres.cloudinary.com%2Fdemo%2Fimage%2Fupload%2Fsample.pdf&filename=lesson-handout.pdf",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"upload",
+								"download"
+							],
+							"query": [
+								{
+									"key": "url",
+									"value": "https%3A%2F%2Fres.cloudinary.com%2Fdemo%2Fimage%2Fupload%2Fsample.pdf",
+									"description": "Encoded Cloudinary URL"
+								},
+								{
+									"key": "filename",
+									"value": "lesson-handout.pdf",
+									"description": "Suggested download filename"
+								}
+							]
+						},
+						"description": "Server-side download proxy to avoid CORS or 401 issues with external storage."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

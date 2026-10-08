@@ -4,7 +4,6 @@ import { authenticateToken } from "../../middlewares/authenticateToken.js";
 
 const router = Router();
 
-// student fetches a specific lesson with all its contents beautifully sorted!
 router.get("/:id", authenticateToken, async (req, res) => {
     try {
         const lesson = await prisma.lesson.findUnique({

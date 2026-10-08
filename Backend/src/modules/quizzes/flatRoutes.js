@@ -5,7 +5,6 @@ import { getAttempt } from "./controllers.js";
 
 const router = Router();
 
-// GET /api/quizzes/:quizId — student fetches a quiz with questions (isCorrect hidden)
 router.get("/:quizId", authenticateToken, async (req, res) => {
     try {
         const quiz = await prisma.quiz.findUnique({
@@ -20,7 +19,6 @@ router.get("/:quizId", authenticateToken, async (req, res) => {
 
         if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-        // Strip isCorrect for students
         const safe = {
             ...quiz,
             questions: quiz.questions.map(q => ({
@@ -35,15 +33,12 @@ router.get("/:quizId", authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/quizzes/:quizId/submit
 router.post("/:quizId/submit", authenticateToken, async (req, res) => {
     const { answers } = req.body;
-    // answers: [{ questionId, selectedOptionId?, selectedOptionIds?, textResponse? }]
     if (!Array.isArray(answers)) {
         return res.status(400).json({ message: "Answers must be an array" });
     }
     try {
-        // Prevent duplicate submission
         const existingAttempt = await prisma.quizAttempt.findFirst({
             where: { studentId: req.user.id, quizId: req.params.quizId }
         });
@@ -162,7 +157,6 @@ router.post("/:quizId/submit", authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/quizzes/topic/:topicId — get quiz by topicId (for student after finishing a topic)
 router.get("/topic/:topicId", authenticateToken, async (req, res) => {
     try {
         const quiz = await prisma.quiz.findFirst({
@@ -191,7 +185,6 @@ router.get("/topic/:topicId", authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/quizzes/attempts/:id — fetch a single attempt with full review data
 router.get("/attempts/:id", authenticateToken, getAttempt);
 
 export default router;

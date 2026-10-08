@@ -1,7 +1,6 @@
 import { prisma } from "../../prisma.js";
 
-// GET /api/practice/random-question
-// Get 1 random basic question for Parent Gate
+
 export const getRandomQuestion = async (req, res) => {
     try {
         const questions = await prisma.question.findMany({
@@ -12,7 +11,6 @@ export const getRandomQuestion = async (req, res) => {
         });
 
         if (questions.length === 0) {
-            // Fallback parent gate math question if no quiz questions are in database
             const n1 = Math.floor(Math.random() * 8) + 3;
             const n2 = Math.floor(Math.random() * 8) + 3;
             const correct = n1 * n2;
@@ -36,7 +34,6 @@ export const getRandomQuestion = async (req, res) => {
 
         const randomQ = questions[Math.floor(Math.random() * questions.length)];
 
-        // Strip isCorrect for client
         const safeOptions = randomQ.options.map(o => ({
             id: o.id,
             text: o.text,
@@ -50,7 +47,6 @@ export const getRandomQuestion = async (req, res) => {
             options: safeOptions
         });
     } catch (err) {
-        // Fallback on error so parents are never blocked
         const n1 = 7;
         const n2 = 8;
         res.json({
@@ -67,11 +63,9 @@ export const getRandomQuestion = async (req, res) => {
     }
 };
 
-// POST /api/practice/random-question/verify
 export const verifyRandomQuestion = async (req, res) => {
     const { questionId, selectedOptionId, selectedOptionIds } = req.body;
     try {
-        // Check if it's a fallback math gate question
         if (typeof questionId === 'string' && questionId.startsWith('math-gate-')) {
             const parts = questionId.split('-');
             const correctVal = parts[3];
@@ -103,8 +97,7 @@ export const verifyRandomQuestion = async (req, res) => {
     }
 };
 
-// GET /api/practice/topics
-// Get topics with available question count
+
 export const getPracticeTopics = async (req, res) => {
     try {
         const topics = await prisma.topic.findMany({
@@ -119,7 +112,6 @@ export const getPracticeTopics = async (req, res) => {
             }
         });
 
-        // Map and filter topics that have at least 1 question
         const practiceTopics = topics
             .map(t => {
                 const totalQuestions = t.quiz.reduce((acc, q) => acc + q.questions.length, 0);
@@ -141,14 +133,11 @@ export const getPracticeTopics = async (req, res) => {
     }
 };
 
-// POST /api/practice/topics/:topicId/start
-// Create a PracticeAttempt with 10 random questions
 export const startPracticeModule = async (req, res) => {
     const studentId = req.user.userId;
     const { topicId } = req.params;
 
     try {
-        // Fetch all questions for this topic
         const topic = await prisma.topic.findUnique({
             where: { id: topicId },
             include: {
@@ -172,11 +161,7 @@ export const startPracticeModule = async (req, res) => {
             return res.status(400).json({ message: "No questions available for this topic" });
         }
 
-        // Shuffle and pick up to 10
         allQuestions = allQuestions.sort(() => 0.5 - Math.random()).slice(0, 10);
-
-        // Create an attempt. Store the question list in a JSON string (could be a temp table, but this is simpler, or we just rely on PracticeAnswer initialization).
-        // Since we need to know which questions belong to this attempt, let's create PracticeAnswer shells!
 
         const maxScore = allQuestions.length;
 
@@ -187,7 +172,7 @@ export const startPracticeModule = async (req, res) => {
                 score: 0,
                 maxScore,
                 passed: false,
-                submittedAt: null,   // null = in-progress; set on real submission
+                submittedAt: null,
                 answers: {
                     create: allQuestions.map(q => ({
                         questionId: q.id,
@@ -206,8 +191,7 @@ export const startPracticeModule = async (req, res) => {
     }
 };
 
-// GET /api/practice/attempts/:attemptId
-// Get practice questions
+
 export const getPracticeAttempt = async (req, res) => {
     try {
         const attempt = await prisma.practiceAttempt.findUnique({
@@ -227,7 +211,6 @@ export const getPracticeAttempt = async (req, res) => {
         if (!attempt) return res.status(404).json({ message: "Attempt not found" });
         if (attempt.studentId !== req.user.userId) return res.status(403).json({ message: "Forbidden" });
 
-        // Build the payload
         const isSubmitted = !!attempt.submittedAt;
         const payload = {
             id: attempt.id,
@@ -250,7 +233,6 @@ export const getPracticeAttempt = async (req, res) => {
                         imageUrl: o.imageUrl,
                         isCorrect: isSubmitted ? o.isCorrect : undefined
                     })),
-                    // If submitted, include the student's answer and correct items
                     answer: isSubmitted ? {
                         selectedOptionId: ans.selectedOptionId,
                         textResponse: ans.textResponse,
@@ -271,11 +253,9 @@ export const getPracticeAttempt = async (req, res) => {
     }
 };
 
-// POST /api/practice/attempts/:attemptId/submit
 export const submitPracticeAttempt = async (req, res) => {
     const { attemptId } = req.params;
-    const { answers } = req.body; // array of { questionId, selectedOptionId, selectedOptionIds (for MULTIPLE_CHOICE), textResponse }
-
+    const { answers } = req.body;
     try {
         const attempt = await prisma.practiceAttempt.findUnique({
             where: { id: attemptId },
@@ -353,9 +333,7 @@ export const submitPracticeAttempt = async (req, res) => {
         }
 
         const percentage = attempt.maxScore > 0 ? Math.round((score / attempt.maxScore) * 100) : 0;
-        const passed = percentage >= 50; // simple threshold for practice
-
-        // Update attempt + answers via transactional batch
+        const passed = percentage >= 50;
         await prisma.$transaction([
             ...processedAnswers.map(ans => prisma.practiceAnswer.update({
                 where: { id: ans.paId },
@@ -383,8 +361,6 @@ export const submitPracticeAttempt = async (req, res) => {
     }
 };
 
-// POST /api/practice/preview
-// Fetch all questions for given topicIds for admin mock exam preview
 export const getPreviewQuestions = async (req, res) => {
     try {
         const { topicIds } = req.body;

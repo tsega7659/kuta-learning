@@ -1,14 +1,6 @@
 import { prisma } from "../../prisma.js";
 
-// =============================================================
-// HELPERS
-// =============================================================
 
-// Validate question options per question type.
-//  - Choice types: exactly 4 options, exactly 1 correct
-//  - TRUE_FALSE:   exactly 2 options, exactly 1 correct
-//  - Text-answer types (WORD_ORDER, FILL_IN_BLANK, DRAG_AND_DROP): 1 correct answer
-// Returns an error message string or null if valid.
 const validateQuestionOptions = (type, options) => {
     if (!Array.isArray(options) || options.length === 0) return "Question must have options";
 
@@ -19,9 +11,8 @@ const validateQuestionOptions = (type, options) => {
     } else if (textTypes.includes(type)) {
         if (options.length < 1) return "Question must define a correct answer";
     } else if (type === "MATCHING") {
-        // Matching pairs — all options are marked correct; just need at least 2 pairs
         if (options.length < 2) return "Matching questions must have at least two pairs";
-        return null; // skip isCorrect validation for MATCHING
+        return null;
     } else {
         if (options.length < 2) return "Choice questions must have at least two options";
     }
@@ -46,7 +37,6 @@ const orderOptions = (options, existingCount = 0) => {
     }));
 };
 
-// Strip `isCorrect` from options for students (prevents cheating)
 const sanitizeForStudent = (quiz) => {
     if (!quiz) return quiz;
     return {
@@ -58,7 +48,6 @@ const sanitizeForStudent = (quiz) => {
     };
 };
 
-// Fetch a quiz by topicId, with questions+options ordered.
 const fetchQuizByTopic = async (topicId, quizType = "QUIZ", includeAnswers = false) => {
     return prisma.quiz.findFirst({
         where: { topicId, quizType },
@@ -74,14 +63,13 @@ const fetchQuizByTopic = async (topicId, quizType = "QUIZ", includeAnswers = fal
     });
 };
 
-// Check if a student has completed all lessons in a topic
 const areAllLessonsCompleted = async (topicId, studentId) => {
     const lessons = await prisma.lesson.findMany({
         where: { topicId },
         select: { id: true }
     });
 
-    if (lessons.length === 0) return true; // no lessons => quiz available
+    if (lessons.length === 0) return true;
 
     const completed = await prisma.lessonProgress.count({
         where: {
@@ -94,10 +82,6 @@ const areAllLessonsCompleted = async (topicId, studentId) => {
     return completed === lessons.length;
 };
 
-// =============================================================
-// GET QUIZ (Student & Content Manager)
-// =============================================================
-// GET /api/.../topics/:topicId/quiz
 export const getQuiz = async (req, res) => {
     try {
         const quizType = req.isBank ? "BANK" : "QUIZ";
@@ -110,7 +94,6 @@ export const getQuiz = async (req, res) => {
             return res.status(404).json({ message: "Quiz not found for this topic" });
         }
 
-        // Hide correct answers for students
         if (req.user.role === "STUDENT") {
             return res.json(sanitizeForStudent(quiz));
         }
@@ -121,10 +104,7 @@ export const getQuiz = async (req, res) => {
     }
 };
 
-// =============================================================
-// GET QUIZ AVAILABILITY (Student)
-// =============================================================
-// GET /api/.../topics/:topicId/quiz/availability
+
 export const getQuizAvailability = async (req, res) => {
     try {
         const quiz = await fetchQuizByTopic(req.params.topicId);
@@ -135,7 +115,6 @@ export const getQuizAvailability = async (req, res) => {
 
         const allCompleted = await areAllLessonsCompleted(req.params.topicId, req.user.id);
 
-        // If not all lessons completed, return the quiz but flag unavailable
         if (!allCompleted) {
             return res.json({ available: false, quiz: sanitizeForStudent(quiz), reason: "lessons_incomplete" });
         }
@@ -147,11 +126,7 @@ export const getQuizAvailability = async (req, res) => {
     }
 };
 
-// =============================================================
-// CONTENT MANAGER OPERATIONS
-// =============================================================
 
-// POST /api/.../topics/:topicId/quiz
 export const createQuiz = async (req, res) => {
     const { title, description, passingScore } = req.body;
     try {
@@ -180,7 +155,6 @@ export const createQuiz = async (req, res) => {
     }
 };
 
-// PUT /api/.../topics/:topicId/quiz/:quizId
 export const updateQuiz = async (req, res) => {
     const { title, description, passingScore } = req.body;
     try {
@@ -209,7 +183,6 @@ export const updateQuiz = async (req, res) => {
     }
 };
 
-// DELETE /api/.../topics/:topicId/quiz/:quizId
 export const deleteQuiz = async (req, res) => {
     try {
         await prisma.quiz.delete({ where: { id: req.params.quizId } });
@@ -220,12 +193,6 @@ export const deleteQuiz = async (req, res) => {
     }
 };
 
-// ---------------------------------------------------------------
-// QUESTION MANAGEMENT
-// ---------------------------------------------------------------
-
-// POST /api/.../topics/:topicId/quiz/:quizId/questions
-// Body: { type, text, explanation, resourceUrl, order, options: [{ text, isCorrect, imageUrl }] }
 export const addQuestion = async (req, res) => {
     const { type = "SINGLE_CHOICE", text, explanation, resourceUrl, order, options } = req.body;
     try {
@@ -271,8 +238,7 @@ export const addQuestion = async (req, res) => {
     }
 };
 
-// PUT /api/.../topics/:topicId/quiz/:quizId/questions/:questionId
-// Body: { type, text, explanation, resourceUrl, order }
+
 export const updateQuestion = async (req, res) => {
     const { type, text, explanation, resourceUrl, order } = req.body;
     try {
@@ -298,7 +264,6 @@ export const updateQuestion = async (req, res) => {
     }
 };
 
-// DELETE /api/.../topics/:topicId/quiz/:quizId/questions/:questionId
 export const deleteQuestion = async (req, res) => {
     try {
         await prisma.question.delete({ where: { id: req.params.questionId } });
@@ -309,15 +274,10 @@ export const deleteQuestion = async (req, res) => {
     }
 };
 
-// ---------------------------------------------------------------
-// OPTION MANAGEMENT
-// ---------------------------------------------------------------
 
-// POST /api/.../topics/:topicId/quiz/:quizId/questions/:questionId/options
 export const addOption = async (req, res) => {
     const { text, isCorrect, imageUrl } = req.body;
     try {
-        // text is required UNLESS an imageUrl is provided (e.g. COLOR_MATCH image-only option)
         if ((!text || !String(text).trim()) && !imageUrl) {
             return res.status(400).json({ message: "Option text is required (or provide an image URL)" });
         }
@@ -349,13 +309,11 @@ export const addOption = async (req, res) => {
     }
 };
 
-// PUT /api/.../topics/:topicId/quiz/:quizId/questions/:questionId/options/:optionId
 export const updateOption = async (req, res) => {
     const { text, isCorrect, imageUrl } = req.body;
     try {
         const data = {};
         if (text !== undefined) {
-            // Allow empty text when imageUrl is being set (image-only options)
             data.text = String(text).trim();
         }
         if (isCorrect !== undefined) data.isCorrect = !!isCorrect;
@@ -366,7 +324,6 @@ export const updateOption = async (req, res) => {
         });
         if (!question) return res.status(404).json({ message: "Question not found" });
 
-        // If setting this option as correct, unset others — except for MULTIPLE_CHOICE and MATCHING
         if (isCorrect && question.type !== "MULTIPLE_CHOICE" && question.type !== "MATCHING") {
             await prisma.questionOption.updateMany({
                 where: { questionId: req.params.questionId },
@@ -385,7 +342,6 @@ export const updateOption = async (req, res) => {
     }
 };
 
-// DELETE /api/.../topics/:topicId/quiz/:quizId/questions/:questionId/options/:optionId
 export const deleteOption = async (req, res) => {
     try {
         await prisma.questionOption.delete({ where: { id: req.params.optionId } });
@@ -399,7 +355,6 @@ export const deleteOption = async (req, res) => {
 
 export const startAttempt = async (req, res) => {
     try {
-        // Check availability first
         const allCompleted = await areAllLessonsCompleted(req.params.topicId, req.user.id);
         if (!allCompleted) {
             return res.status(403).json({ message: "Complete all lessons before starting the quiz" });
@@ -408,7 +363,6 @@ export const startAttempt = async (req, res) => {
         const quiz = await prisma.quiz.findUnique({ where: { id: req.params.quizId } });
         if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-        // If a previous attempt exists, return it (single attempt policy)
         const existing = await prisma.quizAttempt.findFirst({
             where: { studentId: req.user.id, quizId: req.params.quizId },
             orderBy: { createdAt: "desc" }
@@ -421,8 +375,7 @@ export const startAttempt = async (req, res) => {
     }
 };
 
-// POST /api/.../topics/:topicId/quiz/:quizId/submit
-// Body: { answers: [{ questionId, selectedOptionId?, selectedOptionIds?, textResponse? }] }
+
 export const submitAttempt = async (req, res) => {
     const { answers } = req.body;
 
@@ -431,7 +384,6 @@ export const submitAttempt = async (req, res) => {
     }
 
     try {
-        // 1. Prevent duplicate submission (single attempt allowed)
         const existingAttempt = await prisma.quizAttempt.findFirst({
             where: { studentId: req.user.id, quizId: req.params.quizId }
         });
@@ -442,7 +394,6 @@ export const submitAttempt = async (req, res) => {
             });
         }
 
-        // 2. Fetch questions + correct options from DB
         const questions = await prisma.question.findMany({
             where: { quizId: req.params.quizId },
             include: { options: true }
@@ -483,24 +434,19 @@ export const submitAttempt = async (req, res) => {
                     break;
                 }
                 case "MULTIPLE_CHOICE": {
-                    // All correct options must be selected, nothing extra
                     const correctIds = correctOpts.map(o => o.id).sort();
                     const selected = (ans.selectedOptionIds || []).sort();
                     isCorrect = JSON.stringify(correctIds) === JSON.stringify(selected);
                     break;
                 }
                 case "MATCHING": {
-                    // textResponse is JSON: { [optionId]: optionId }
-                    // Each option.imageUrl = "match::<answer>"; option.text = question
-                    // Build correct map: optionId -> correctAnswerText
+
                     const correctPairs = {};
                     for (const opt of q.options) {
                         const ans_ = opt.imageUrl?.startsWith("match::") ? opt.imageUrl.replace("match::", "") : "";
                         correctPairs[opt.id] = ans_.toLowerCase().trim();
                     }
-                    // Build submitted map: optionId -> selectedOptionId (the right column item)
-                    // The client sends { [leftOptionId]: rightOptionId }
-                    // right option's text is the answer text
+
                     try {
                         const submitted = typeof ans.textResponse === "string"
                             ? JSON.parse(ans.textResponse) : {};
@@ -518,7 +464,6 @@ export const submitAttempt = async (req, res) => {
                 }
                 case "WORD_ORDER":
                 case "DRAG_AND_DROP": {
-                    // textResponse is the concatenated letters
                     const expected = correctOpts[0]?.text?.toUpperCase().trim() || "";
                     isCorrect = (ans.textResponse || "").toUpperCase().trim() === expected;
                     break;
@@ -577,10 +522,7 @@ export const submitAttempt = async (req, res) => {
     }
 };
 
-// =============================================================
-// GET ATTEMPT (Student)
-// =============================================================
-// GET /api/quiz-attempts/:id
+
 export const getAttempt = async (req, res) => {
     try {
         const attempt = await prisma.quizAttempt.findUnique({
@@ -600,7 +542,6 @@ export const getAttempt = async (req, res) => {
 
         if (!attempt) return res.status(404).json({ message: "Attempt not found" });
 
-        // Only the owner (or a content manager) can view the attempt
         if (attempt.studentId !== req.user.id && req.user.role !== "CONTENT_MANAGER") {
             return res.status(403).json({ message: "Access denied" });
         }
@@ -609,7 +550,6 @@ export const getAttempt = async (req, res) => {
             ? Math.round((attempt.score / attempt.maxScore) * 100)
             : 0;
 
-        // Build review data for each question
         const questions = attempt.quiz.questions.map(q => {
             const answer = attempt.answers.find(a => a.questionId === q.id);
             const correctOptions = q.options.filter(o => o.isCorrect);
@@ -634,10 +574,6 @@ export const getAttempt = async (req, res) => {
     }
 };
 
-// =============================================================
-// GET ATTEMPTS BY QUIZ (Student) — for "your attempts" list
-// =============================================================
-// GET /api/.../topics/:topicId/quiz/attempts
 export const getMyAttempts = async (req, res) => {
     try {
         const quiz = await prisma.quiz.findFirst({

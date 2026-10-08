@@ -1,6 +1,5 @@
 import { prisma } from "../../prisma.js";
 
-// === PUBLIC ===
 export const getAllCourses = async (req, res) => {
     try {
         const courses = await prisma.course.findMany({
@@ -40,7 +39,6 @@ export const getAllCourses = async (req, res) => {
                     });
                 }
 
-                // Fetch best attempt for each quiz
                 const attempts = quizIds.length > 0 ? await prisma.quizAttempt.findMany({
                     where: { studentId, quizId: { in: quizIds }, submittedAt: { not: null } },
                     orderBy: { score: 'desc' }
@@ -122,7 +120,6 @@ export const getCourseById = async (req, res) => {
         });
         if (!course) return res.status(404).json({ message: "Course not found" });
 
-        // If a student is requesting, enrich with lesson progress + quiz availability
         if (req.user && req.user.role === "STUDENT") {
             const studentId = req.user.id;
             const lessonIds = course.chapters
@@ -190,7 +187,6 @@ export const getCourseById = async (req, res) => {
     }
 };
 
-// === CONTENT MANAGER ===
 export const createCourse = async (req, res) => {
     const { title, description, coverImage, gradeLevel } = req.body;
     try {

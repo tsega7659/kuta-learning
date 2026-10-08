@@ -3,7 +3,7 @@ import { getTopics, createTopic, updateTopic, deleteTopic } from "./controllers.
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
 import lessonRoutes from "../lessons/routes.js";
-import quizRoutes from "../quizzes/routes.js"; // IMPORT THIS
+import quizRoutes from "../quizzes/routes.js";
 
 const router = Router({ mergeParams: true });
 
@@ -13,7 +13,7 @@ router.put("/:id", authenticateToken, requireRole(["CONTENT_MANAGER"]), updateTo
 router.delete("/:id", authenticateToken, requireRole(["CONTENT_MANAGER"]), deleteTopic);
 
 router.use("/:topicId/lessons", lessonRoutes);
-router.use("/:topicId/quiz", quizRoutes); // MAPPED AS TOPIC HAS 1 QUIZ MAX
+router.use("/:topicId/quiz", quizRoutes);
 router.use("/:topicId/bank", (req, res, next) => {
     req.isBank = true;
     next();

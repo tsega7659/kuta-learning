@@ -11,7 +11,7 @@ router.post("/", authenticateToken, requireRole(["CONTENT_MANAGER"]), createLess
 router.put("/:id", authenticateToken, requireRole(["CONTENT_MANAGER"]), updateLesson);
 router.delete("/:id", authenticateToken, requireRole(["CONTENT_MANAGER"]), deleteLesson);
 
-// NESTED
+
 router.use("/:lessonId/contents", lessonContentRoutes);
 
 export default router;
