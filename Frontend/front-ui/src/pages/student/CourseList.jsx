@@ -49,7 +49,7 @@ export default function CourseList() {
                     <div className="rounded-[32px] bg-white p-8 text-center shadow-[0_6px_20px_rgba(12,59,107,0.06)] border border-orange-100">
                         <FaBookOpen className="text-4xl text-[#f26522]/40 mx-auto mb-3" />
                         <h3 className="text-lg font-black text-[#0c3b6b] mb-1">No Subjects Yet</h3>
-                        <p className="font-bold text-gray-400 text-sm">Ask your teacher or admin to assign subjects.</p>
+                        <p className="font-bold text-gray-400 text-sm">Ask your  admin to assign subjects.</p>
                     </div>
                 ) : (
                     courses.map((course, idx) => {

@@ -15,7 +15,7 @@ export default function HomeProfile() {
     const [showGate, setShowGate] = useState(false);
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('menu'); // 'menu' or 'progress'
+    const [activeTab, setActiveTab] = useState('menu'); 
     const [selectedTheme, setSelectedTheme] = useState('kuta');
 
     useEffect(() => {
@@ -100,7 +100,6 @@ export default function HomeProfile() {
                 {activeTab === 'menu' ? (
                     /* Profile Menu List */
                     <>
-                        {/* Option 1: My Grade & Progress */}
                         <button
                             onClick={() => setActiveTab('progress')}
                             className="w-full bg-white rounded-[24px] p-4 shadow-[0_4px_16px_rgba(12,59,107,0.06)] border border-orange-100/80 flex items-center justify-between hover:shadow-card transition-all active:scale-[0.98]"
