@@ -132,7 +132,7 @@ export default function Register() {
                             disabled={loading}
                             className="w-full bg-[#f26c24] text-white font-extrabold py-4 rounded-full hover:bg-[#e05b13] transition transform active:scale-95 disabled:opacity-50 shadow-[0_10px_20px_rgba(242,108,36,0.3)]"
                         >
-                            {loading ? 'Signing up...' : 'Sign Up →'}
+                            {loading ? 'Signing up...' : 'Sign Up '}
                         </button>
                     </form>
 
