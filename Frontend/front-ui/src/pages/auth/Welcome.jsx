@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 const slides = [
     {
         title: 'Excel in Your Exams',
-        description: 'Personalized learning paths for Grade 6 to 8. Master complex topics with interactive practice and expert guidance.',
+        description: 'Personalized learning paths for Grade 6, 8 and 12. Master complex topics with interactive practice and expert guidance.',
     },
     {
         title: 'Learn at Your Pace',
@@ -12,7 +12,7 @@ const slides = [
     },
     {
         title: 'Track Your Progress',
-        description: 'See how far you\'ve come. Complete lessons, earn badges and show your achievements to the world!',
+        description: 'See how far you\'ve come. Complete lessons,  and show your achievements to the world!',
     },
 ];
 

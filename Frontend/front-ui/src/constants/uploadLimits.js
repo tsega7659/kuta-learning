@@ -38,7 +38,6 @@ export function validateFileForLessonType(file, lessonContentType) {
     return `${kind.charAt(0).toUpperCase() + kind.slice(1)} files must be ${UPLOAD_LIMITS_MB[kind]} MB or smaller (selected file is ${(file.size / (1024 * 1024)).toFixed(1)} MB).`;
 }
 
-/** Cover images and generic image uploads */
 export function validateImageFile(file) {
     if (!file) return null;
     const maxBytes = UPLOAD_LIMITS_MB.image * 1024 * 1024;
