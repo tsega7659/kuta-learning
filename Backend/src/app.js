@@ -36,6 +36,8 @@ import flatLessonRoutes from "./modules/lessons/flatRoutes.js";
 import uploadRoutes from "./modules/upload/routes.js";
 import quizFlatRoutes from "./modules/quizzes/flatRoutes.js";
 import practiceRoutes from "./modules/practice/routes.js";
+import nationalExamRoutes from "./modules/nationalExams/routes.js";
+import shortNotesRoutes from "./modules/shortNotes/routes.js";
 import { getAttempt } from "./modules/quizzes/controllers.js";
 import { authenticateToken } from "./middlewares/authenticateToken.js";
 
@@ -50,6 +52,8 @@ app.use("/api/lessons", flatLessonRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/quizzes", quizFlatRoutes);
 app.use("/api/practice", practiceRoutes);
+app.use("/api/national-exams", nationalExamRoutes);
+app.use("/api/short-notes", shortNotesRoutes);
 app.get("/api/quiz-attempts/:id", authenticateToken, getAttempt);
 // ---------------------------------------------------------------------
 

@@ -34,27 +34,32 @@ enum QuestionType {
 }
 
 model User {
-  id             String          @id @default(uuid())
-  email          String          @unique
-  passwordHash   String
-  role           Role            @default(STUDENT)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  studentProfile StudentProfile?
-  lessonProgress LessonProgress[]
-  quizAttempts   QuizAttempt[]
+  id               String                @id @default(uuid())
+  email            String                @unique
+  passwordHash     String
+  role             Role                  @default(STUDENT)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  studentProfile   StudentProfile?
+  lessonProgress   LessonProgress[]
+  quizAttempts     QuizAttempt[]
   practiceAttempts PracticeAttempt[]
+  examAttempts     NationalExamAttempt[]
+  noteProgress     NoteProgress[]
 }
 
 model StudentProfile {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  gradeLevel Int      // 1 to 12
-  avatarUrl  String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  gradeLevel          Int      // 1 to 12
+  stream              String?  // NATURAL, SOCIAL, or null
+  isPremium           Boolean  @default(false)
+  onboardingCompleted Boolean  @default(false)
+  avatarUrl           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model Course {
@@ -264,4 +269,165 @@ model BankQuestionOption {
   isCorrect  Boolean      @default(false)
   imageUrl   String?
   order      Int
+}
+
+// ── Grade 6, 8, 12 National Exams & Short Notes ──
+
+enum StreamType {
+  NATURAL
+  SOCIAL
+  COMMON
+}
+
+enum ExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  ABANDONED
+}
+
+model ExamSubject {
+  id            String         @id @default(uuid())
+  name          String
+  code          String?
+  gradeLevels   Int[]
+  stream        StreamType?
+  description   String?
+  subcategories String?
+  icon          String?
+  color         String?
+  order         Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  exams         NationalExam[]
+  chapters      NoteChapter[]
+}
+
+model NationalExam {
+  id              String                @id @default(uuid())
+  subjectId       String
+  subject         ExamSubject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  title           String
+  year            Int
+  gradeLevel      Int
+  stream          StreamType?
+  durationMinutes Int                   @default(120)
+  passingScore    Int                   @default(50)
+  isPremium       Boolean               @default(false)
+  order           Int                   @default(0)
+  coverImage      String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  questions       ExamQuestion[]
+  attempts        NationalExamAttempt[]
+
+  @@unique([subjectId, year, gradeLevel])
+}
+
+model ExamQuestion {
+  id          String               @id @default(uuid())
+  examId      String
+  exam        NationalExam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  type        QuestionType         @default(SINGLE_CHOICE)
+  text        String
+  resourceUrl String?
+  explanation String?
+  order       Int
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  options     ExamQuestionOption[]
+  answers     NationalExamAnswer[]
+
+  @@unique([examId, order])
+}
+
+model ExamQuestionOption {
+  id         String               @id @default(uuid())
+  questionId String
+  question   ExamQuestion         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean              @default(false)
+  imageUrl   String?
+  order      Int
+  answers    NationalExamAnswer[]
+
+  @@unique([questionId, order])
+}
+
+model NationalExamAttempt {
+  id                   String               @id @default(uuid())
+  studentId            String
+  student              User                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examId               String
+  exam                 NationalExam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  status               ExamAttemptStatus    @default(IN_PROGRESS)
+  score                Int                  @default(0)
+  maxScore             Int                  @default(0)
+  correctAnswers       Int                  @default(0)
+  incorrectAnswers     Int                  @default(0)
+  accuracyPercentage   Float                @default(0)
+  passed               Boolean              @default(false)
+  timeRemainingSeconds Int?
+  startedAt            DateTime             @default(now())
+  submittedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  answers              NationalExamAnswer[]
+}
+
+model NationalExamAnswer {
+  id               String              @id @default(uuid())
+  attemptId        String
+  attempt          NationalExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         ExamQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOptionId String?
+  selectedOption   ExamQuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  textResponse     String?
+  isFlagged        Boolean             @default(false)
+  isCorrect        Boolean             @default(false)
+
+  @@unique([attemptId, questionId])
+}
+
+model NoteChapter {
+  id                 String         @id @default(uuid())
+  subjectId          String
+  subject            ExamSubject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  gradeLevel         Int
+  stream             StreamType?
+  title              String
+  subtitle           String?
+  description        String?
+  order              Int            @default(0)
+  pdfUrl             String?
+  fileSize           String?
+  content            String?
+  learningObjectives String[]
+  resources          Json?
+  isPremium          Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  progress           NoteProgress[]
+
+  @@unique([subjectId, gradeLevel, order])
+}
+
+model NoteProgress {
+  id             String       @id @default(uuid())
+  studentId      String
+  student        User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  chapterId      String
+  chapter        NoteChapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  isRead         Boolean      @default(false)
+  readPercentage Int          @default(0)
+  completedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([studentId, chapterId])
 }
