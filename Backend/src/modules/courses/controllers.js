@@ -20,32 +20,59 @@ export const getAllCourses = async (req, res) => {
 
         if (req.user && req.user.role === "STUDENT") {
             const studentId = req.user.id;
-            const enrichedCourses = await Promise.all(courses.map(async (course) => {
-                const lessonIds = course.chapters
-                    .flatMap(c => c.topics)
-                    .flatMap(t => t.lessons)
-                    .map(l => l.id);
 
-                const courseQuizzes = course.chapters
-                    .flatMap(c => c.topics)
-                    .flatMap(t => t.quiz);
-
-                const quizIds = courseQuizzes.map(q => q.id);
-
-                let completedCount = 0;
-                if (lessonIds.length > 0) {
-                    completedCount = await prisma.lessonProgress.count({
-                        where: { studentId, lessonId: { in: lessonIds }, completed: true }
+            // Collect all lesson and quiz IDs across all courses upfront
+            const allLessonIds = [];
+            const allQuizIds = [];
+            courses.forEach(course => {
+                (course.chapters || []).forEach(ch => {
+                    (ch.topics || []).forEach(tp => {
+                        (tp.lessons || []).forEach(l => allLessonIds.push(l.id));
+                        (tp.quiz || []).forEach(q => allQuizIds.push(q.id));
                     });
+                });
+            });
+
+            // Run ONLY TWO batch queries for the student across all courses
+            const [completedProgress, attempts] = await Promise.all([
+                allLessonIds.length > 0
+                    ? prisma.lessonProgress.findMany({
+                          where: { studentId, lessonId: { in: allLessonIds }, completed: true },
+                          select: { lessonId: true },
+                      })
+                    : [],
+                allQuizIds.length > 0
+                    ? prisma.quizAttempt.findMany({
+                          where: { studentId, quizId: { in: allQuizIds }, submittedAt: { not: null } },
+                          orderBy: { score: "desc" },
+                          select: { quizId: true, score: true, maxScore: true, passed: true },
+                      })
+                    : [],
+            ]);
+
+            const completedLessonSet = new Set(completedProgress.map(p => p.lessonId));
+            const bestAttemptMap = new Map();
+            attempts.forEach(att => {
+                if (!bestAttemptMap.has(att.quizId)) {
+                    bestAttemptMap.set(att.quizId, att);
                 }
+            });
 
-                const attempts = quizIds.length > 0 ? await prisma.quizAttempt.findMany({
-                    where: { studentId, quizId: { in: quizIds }, submittedAt: { not: null } },
-                    orderBy: { score: 'desc' }
-                }) : [];
+            // Assemble enriched courses in-memory with 0 additional database roundtrips
+            const enrichedCourses = courses.map(course => {
+                const lessonIds = [];
+                const courseQuizzes = [];
 
+                (course.chapters || []).forEach(ch => {
+                    (ch.topics || []).forEach(tp => {
+                        (tp.lessons || []).forEach(l => lessonIds.push(l.id));
+                        (tp.quiz || []).forEach(q => courseQuizzes.push(q));
+                    });
+                });
+
+                const completedCount = lessonIds.filter(id => completedLessonSet.has(id)).length;
                 const enrichedQuizzes = courseQuizzes.map(q => {
-                    const bestAttempt = attempts.find(a => a.quizId === q.id);
+                    const bestAttempt = bestAttemptMap.get(q.id);
                     return {
                         id: q.id,
                         title: q.title,
@@ -53,7 +80,7 @@ export const getAllCourses = async (req, res) => {
                         score: bestAttempt ? bestAttempt.score : null,
                         maxScore: bestAttempt ? bestAttempt.maxScore : null,
                         passed: bestAttempt ? bestAttempt.passed : false,
-                        attempted: !!bestAttempt
+                        attempted: !!bestAttempt,
                     };
                 });
 
@@ -70,9 +97,10 @@ export const getAllCourses = async (req, res) => {
                     progressPercentage,
                     totalLessons: lessonIds.length,
                     completedLessons: completedCount,
-                    quizzes: enrichedQuizzes
+                    quizzes: enrichedQuizzes,
                 };
-            }));
+            });
+
             return res.json(enrichedCourses);
         }
 

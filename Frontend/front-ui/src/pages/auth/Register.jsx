@@ -7,7 +7,6 @@ export default function Register() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [gradeLevel, setGradeLevel] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -16,14 +15,10 @@ export default function Register() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!gradeLevel) {
-            setError('Please select your grade level.');
-            return;
-        }
         setError('');
         setLoading(true);
         try {
-            await register(email, password, name, parseInt(gradeLevel));
+            await register(email, password, name);
             navigate('/login', { state: { registered: true, email } });
         } catch (err) {
             setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Registration failed.');
@@ -62,26 +57,6 @@ export default function Register() {
                                     placeholder="John Doe"
                                     required
                                 />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-[14px] font-bold text-gray-700 mb-2">Grade Level</label>
-                            <div className="relative">
-                                <select
-                                    value={gradeLevel}
-                                    onChange={(e) => setGradeLevel(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-3.5 bg-gray-50/60 rounded-2xl border border-gray-100 focus:border-[#f26c24] focus:outline-none transition text-gray-800 font-medium appearance-none"
-                                    required
-                                >
-                                    <option value="" disabled>Select your grade</option>
-                                    {[1, 2, 3, 4,].map((g) => (
-                                        <option key={g} value={g}>Grade {g}</option>
-                                    ))}
-                                </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                                </div>
                             </div>
                         </div>
 

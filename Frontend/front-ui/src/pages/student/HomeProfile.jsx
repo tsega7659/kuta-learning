@@ -4,7 +4,7 @@ import {
     FaRightFromBracket, FaGear, FaXmark, FaUser, FaCheck, FaBook,
     FaCircleCheck, FaStar, FaTrophy, FaGraduationCap, FaChevronRight,
     FaIdCard, FaShieldHalved, FaPalette, FaChevronLeft, FaBookOpen,
-    FaCircleQuestion, FaPencil
+    FaCircleQuestion, FaPencil, FaLock, FaKey
 } from 'react-icons/fa6';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -13,6 +13,7 @@ export default function HomeProfile() {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
     const [showGate, setShowGate] = useState(false);
+    const [showChangePassword, setShowChangePassword] = useState(false);
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('menu'); 
@@ -163,7 +164,24 @@ export default function HomeProfile() {
                             <span className="text-xs font-black text-gray-400">Verified</span>
                         </div>
 
-                        {/* Option 5: Privacy Policy */}
+                        {/* Option 5: Security & Password */}
+                        <button
+                            onClick={() => setShowChangePassword(true)}
+                            className="w-full bg-white rounded-[24px] p-4 shadow-[0_4px_16px_rgba(12,59,107,0.06)] border border-orange-100/80 flex items-center justify-between hover:shadow-card transition-all active:scale-[0.98]"
+                        >
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
+                                    <FaLock className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="font-black text-[#0c3b6b] text-base">Security & Password</h3>
+                                    <p className="text-xs font-bold text-gray-400">Change password with OTP verification</p>
+                                </div>
+                            </div>
+                            <FaChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
+
+                        {/* Option 6: Privacy Policy */}
                         <div className="w-full bg-white rounded-[24px] p-4 shadow-[0_4px_16px_rgba(12,59,107,0.06)] border border-orange-100/80 flex items-center justify-between">
                             <div className="flex items-center gap-3.5">
                                 <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 border border-green-100">
@@ -350,6 +368,13 @@ export default function HomeProfile() {
                     }}
                 />
             )}
+
+            {showChangePassword && (
+                <ChangePasswordModal
+                    onClose={() => setShowChangePassword(false)}
+                    userEmail={user?.email}
+                />
+            )}
         </div>
     );
 }
@@ -467,6 +492,208 @@ function ParentGateModal({ onClose, onSuccess }) {
                             </button>
                         </div>
                     )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ChangePasswordModal({ onClose, userEmail }) {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [otp, setOtp] = useState('');
+    const [otpSent, setOtpSent] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
+    const [loadingOtp, setLoadingOtp] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [cooldown]);
+
+    const handleSendOtp = async () => {
+        setError('');
+        setSuccess('');
+        setLoadingOtp(true);
+        try {
+            const res = await api.post('/auth/change-password/request-otp');
+            setOtpSent(true);
+            setCooldown(60);
+            setSuccess(res.data?.message || 'Verification code sent to your email.');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to send OTP code.');
+        } finally {
+            setLoadingOtp(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+
+        if (!otpSent || !otp.trim()) {
+            setError('Please request and enter the verification code sent to your email.');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setError('New password must be at least 6 characters.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setError('New passwords do not match.');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const res = await api.post('/auth/change-password', {
+                currentPassword,
+                newPassword,
+                otp: otp.trim(),
+            });
+            setSuccess(res.data?.message || 'Password changed successfully!');
+            setTimeout(() => {
+                onClose();
+            }, 1800);
+        } catch (err) {
+            setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Failed to update password.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-[28px] w-full max-w-md overflow-hidden animate-spring-up shadow-2xl relative border border-gray-100">
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 bg-gray-100 p-2.5 rounded-full text-gray-500 hover:bg-gray-200 transition"
+                >
+                    <FaXmark className="w-4 h-4" />
+                </button>
+
+                <div className="p-6 sm:p-7">
+                    <div className="text-center mb-5">
+                        <div className="w-12 h-12 rounded-2xl bg-orange-50 text-[#f26522] border border-orange-100 flex items-center justify-center mx-auto mb-2">
+                            <FaLock className="w-5 h-5" />
+                        </div>
+                        <h2 className="text-xl font-extrabold text-[#0c3b6b]">Change Password</h2>
+                        <p className="text-xs font-bold text-gray-400 mt-1">
+                            An OTP code will be sent to your email to confirm
+                        </p>
+                    </div>
+
+                    {error && (
+                        <div className="mb-4 bg-red-50 text-red-600 px-4 py-2.5 rounded-2xl text-xs font-bold border border-red-100">
+                            {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="mb-4 bg-green-50 text-green-700 px-4 py-2.5 rounded-2xl text-xs font-bold border border-green-100">
+                            {success}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-extrabold text-[#0c3b6b] uppercase tracking-wider mb-1">
+                                Current Password
+                            </label>
+                            <input
+                                type="password"
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                placeholder="••••••••"
+                                required
+                                className="w-full px-4 py-3 bg-gray-50/70 rounded-xl border border-gray-200 focus:border-[#f26522] focus:outline-none text-sm font-semibold text-gray-800 transition"
+                            />
+                        </div>
+
+                        <div>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="block text-xs font-extrabold text-[#0c3b6b] uppercase tracking-wider">
+                                    Email Verification Code
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={handleSendOtp}
+                                    disabled={loadingOtp || cooldown > 0}
+                                    className="text-xs font-bold text-[#f26522] hover:underline disabled:opacity-50"
+                                >
+                                    {loadingOtp
+                                        ? 'Sending...'
+                                        : cooldown > 0
+                                        ? `Resend in ${cooldown}s`
+                                        : otpSent
+                                        ? 'Resend OTP'
+                                        : 'Send OTP to Email'}
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                                    placeholder={otpSent ? 'Enter 6-digit code' : 'Click "Send OTP to Email" first'}
+                                    disabled={!otpSent}
+                                    required
+                                    className="w-full px-4 py-3 bg-gray-50/70 rounded-xl border border-gray-200 focus:border-[#f26522] focus:outline-none text-sm font-black tracking-widest text-gray-800 disabled:opacity-50 transition"
+                                />
+                            </div>
+                            {userEmail && (
+                                <p className="text-[11px] text-gray-400 font-medium mt-1">
+                                    Target email: <span className="font-bold text-gray-600">{userEmail}</span>
+                                </p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-extrabold text-[#0c3b6b] uppercase tracking-wider mb-1">
+                                New Password
+                            </label>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="••••••••"
+                                minLength={6}
+                                required
+                                className="w-full px-4 py-3 bg-gray-50/70 rounded-xl border border-gray-200 focus:border-[#f26522] focus:outline-none text-sm font-semibold text-gray-800 transition"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-extrabold text-[#0c3b6b] uppercase tracking-wider mb-1">
+                                Confirm New Password
+                            </label>
+                            <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                placeholder="••••••••"
+                                minLength={6}
+                                required
+                                className="w-full px-4 py-3 bg-gray-50/70 rounded-xl border border-gray-200 focus:border-[#f26522] focus:outline-none text-sm font-semibold text-gray-800 transition"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={submitting || !otpSent || otp.length !== 6}
+                            className="w-full mt-2 bg-[#f26522] text-white font-black py-3.5 rounded-full shadow-[0_4px_0_0_#ad3c09] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 text-sm"
+                        >
+                            {submitting ? 'UPDATING PASSWORD...' : 'UPDATE PASSWORD'}
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

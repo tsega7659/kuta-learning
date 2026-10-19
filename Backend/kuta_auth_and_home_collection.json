@@ -1,0 +1,602 @@
+{
+  "info": {
+    "_postman_id": "kuta-auth-and-home-api-collection",
+    "name": "Kuta Learning - Auth & Home Page APIs",
+    "description": "Production Postman Collection for Flutter developers integrating Kuta Learning's Authentication, Refresh Token, OTP flows, and Home Dashboard feeds (for both Kids and Grades 6-12). Includes automatic token management scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://kuta-learning.onrender.com/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sampleEmail",
+      "value": "ruth@kuta.com",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Register - Grades Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var data = pm.response.json();",
+                  "    if (data.token) pm.collectionVariables.set('token', data.token);",
+                  "    if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "    console.log('Saved token and refreshToken to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dawit Haile\",\n  \"email\": \"dawit_grades@kuta.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Registers a Grades student without requiring grade selection on the signup screen. Returns JWT token, 30-day refreshToken, and sets onboardingCompleted: false so the app can guide them through Grade & Stream Onboarding."
+          }
+        },
+        {
+          "name": "Register - Kids Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var data = pm.response.json();",
+                  "    if (data.token) pm.collectionVariables.set('token', data.token);",
+                  "    if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "    console.log('Saved token and refreshToken to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Abebe Junior\",\n  \"email\": \"abebe_kid@kuta.com\",\n  \"password\": \"password123\",\n  \"gradeLevel\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register/kids",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register",
+                "kids"
+              ]
+            },
+            "description": "Dedicated registration for Kids app. Accepts gradeLevel directly (1 to 4), returns token + refreshToken, and sets onboardingCompleted: true."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    if (data.token) pm.collectionVariables.set('token', data.token);",
+                  "    if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "    console.log('Saved token and refreshToken to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ruth@kuta.com\",\n  \"password\": \"student123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates user credentials. Returns access token (7d), refreshToken (30d), user role ('STUDENT' or 'CONTENT_MANAGER'), and student profile."
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    if (data.token) pm.collectionVariables.set('token', data.token);",
+                  "    if (data.refreshToken) pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                  "    console.log('Rotated access and refresh tokens!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh-token"
+              ]
+            },
+            "description": "Exchanges an active 30-day refreshToken for a new pair of access token and refresh token without forcing user to re-login."
+          }
+        },
+        {
+          "name": "Get Current User Profile (Me)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Returns details of the currently authenticated user session. Used on app startup to verify token validity and restore student state."
+          }
+        },
+        {
+          "name": "Submit Onboarding (Grade & Stream)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gradeLevel\": 12,\n  \"stream\": \"NATURAL\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/onboarding",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "onboarding"
+              ]
+            },
+            "description": "Called after signup when a student selects their grade. For Grade 12, stream ('NATURAL' or 'SOCIAL') is required. Sets onboardingCompleted: true."
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ruth Updated\",\n  \"gradeLevel\": 12,\n  \"stream\": \"NATURAL\",\n  \"avatarUrl\": \"https://example.com/avatar.png\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "profile"
+              ]
+            },
+            "description": "Updates student profile properties including name, avatar, and grade/stream."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Password Management & OTP",
+      "item": [
+        {
+          "name": "1. Forgot Password - Request OTP (Rate limited)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{sampleEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Generates a 6-digit OTP code (valid for 10 minutes) and sends it via Resend to the user's email address. Rate-limited to max 5 OTPs per 10 minutes. Enumeration-safe: always returns 200 OK."
+          }
+        },
+        {
+          "name": "2. Verify OTP Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var data = pm.response.json();",
+                  "    if (data.resetToken) {",
+                  "        pm.collectionVariables.set('resetToken', data.resetToken);",
+                  "        console.log('Saved resetToken to collection variable');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{sampleEmail}}\",\n  \"otp\": \"123456\",\n  \"type\": \"FORGOT_PASSWORD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verifies the 6-digit code. On success, consumes the OTP and returns a signed 15-minute resetToken."
+          }
+        },
+        {
+          "name": "3. Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{sampleEmail}}\",\n  \"resetToken\": \"{{resetToken}}\",\n  \"password\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "Submits the new password along with the verified resetToken."
+          }
+        },
+        {
+          "name": "4. Change Password - Request OTP (Logged-in)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password/request-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password",
+                "request-otp"
+              ]
+            },
+            "description": "Sends a verification OTP to the logged-in user's email address for password modification. Rate-limited."
+          }
+        },
+        {
+          "name": "5. Change Password (Logged-in)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"student123\",\n  \"newPassword\": \"newstudent123\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Verifies currentPassword and OTP code, then updates user's password."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Home Page & Dashboard",
+      "item": [
+        {
+          "name": "Home Feed - Courses & Progress (Kids / Lower Grades)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses"
+              ]
+            },
+            "description": "Optimized single batch query. Fetches all courses including chapter count, lesson completion counts, and calculated progressPercentage for the authenticated student."
+          }
+        },
+        {
+          "name": "Home Feed - Course Details by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/courses/{{courseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "courses",
+                "{{courseId}}"
+              ]
+            },
+            "description": "Detailed view of a course with complete chapter/topic/lesson trees and student completion indicators."
+          }
+        },
+        {
+          "name": "Home Feed - Exam Simulator Dashboard (Grades 6, 8, 12)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/national-exams/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "national-exams",
+                "dashboard"
+              ]
+            },
+            "description": "Main screen for Exam Prep students. Returns student info, active banner exam (with resume state or latest exam), and subject cards with exam counts and completion stats."
+          }
+        },
+        {
+          "name": "Home Feed - Exam Subjects with Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/national-exams/subjects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "national-exams",
+                "subjects"
+              ]
+            },
+            "description": "Returns subject cards for the student's grade and stream with completed exams count, question counts, and average accuracy percentage."
+          }
+        }
+      ]
+    }
+  ]
+}

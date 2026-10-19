@@ -16,14 +16,46 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Handle 401/403 responses globally
+// Handle 401/403 responses globally with silent token refresh
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        const originalRequest = error.config;
+        if (
+            error.response?.status === 401 &&
+            !originalRequest?._retry &&
+            !originalRequest?.url?.includes('/auth/login') &&
+            !originalRequest?.url?.includes('/auth/refresh-token')
+        ) {
+            originalRequest._retry = true;
+            const storedRefreshToken = localStorage.getItem('refreshToken');
+            if (storedRefreshToken) {
+                try {
+                    const res = await axios.post(`${API_BASE}/auth/refresh-token`, { refreshToken: storedRefreshToken });
+                    if (res.data?.token) {
+                        localStorage.setItem('token', res.data.token);
+                        if (res.data.refreshToken) {
+                            localStorage.setItem('refreshToken', res.data.refreshToken);
+                        }
+                        originalRequest.headers.Authorization = `Bearer ${res.data.token}`;
+                        return api(originalRequest);
+                    }
+                } catch (refreshErr) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('refreshToken');
+                    localStorage.removeItem('user');
+                    if (!['/login', '/register', '/forgot-password'].includes(window.location.pathname)) {
+                        window.location.href = '/login';
+                    }
+                    return Promise.reject(refreshErr);
+                }
+            }
+        }
+
         if (error.response?.status === 401 || error.response?.status === 403) {
-            // If token is expired/invalid, clear it
             if (!['/login', '/register', '/forgot-password'].includes(window.location.pathname)) {
                 localStorage.removeItem('token');
+                localStorage.removeItem('refreshToken');
                 localStorage.removeItem('user');
                 window.location.href = '/login';
             }
