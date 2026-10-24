@@ -736,24 +736,143 @@ export const getExamAttemptResult = async (req, res) => {
 };
 
 // ── Content Manager CRUD ──────────────────────────────────────────────────────
+export const getAdminSubjects = async (req, res) => {
+    const { gradeLevel } = req.query;
+    try {
+        const whereClause = {};
+        if (gradeLevel) {
+            whereClause.gradeLevels = { has: parseInt(gradeLevel, 10) };
+        }
+        const subjects = await prisma.examSubject.findMany({
+            where: whereClause,
+            orderBy: { order: "asc" },
+            include: {
+                exams: {
+                    select: {
+                        id: true,
+                        title: true,
+                        year: true,
+                        gradeLevel: true,
+                        stream: true,
+                        durationMinutes: true,
+                        isPremium: true,
+                        _count: { select: { questions: true } }
+                    }
+                }
+            }
+        });
+        res.json(subjects);
+    } catch (err) {
+        console.error("Error in getAdminSubjects:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
 export const createExamSubject = async (req, res) => {
     const { name, code, gradeLevels, stream, description, subcategories, icon, color, order } = req.body;
     try {
+        const parsedGradeLevels = Array.isArray(gradeLevels)
+            ? gradeLevels.map(g => parseInt(g, 10))
+            : [12];
+
         const subject = await prisma.examSubject.create({
             data: {
                 name,
-                code,
-                gradeLevels: Array.isArray(gradeLevels) ? gradeLevels : [12],
+                code: code || null,
+                gradeLevels: parsedGradeLevels,
                 stream: stream || null,
-                description,
-                subcategories,
-                icon,
-                color,
-                order: order ?? 0
+                description: description || null,
+                subcategories: subcategories || null,
+                icon: icon || null,
+                color: color || "#0F4C81",
+                order: order !== undefined ? parseInt(order, 10) : 0
             }
         });
         res.status(201).json(subject);
     } catch (err) {
+        console.error("Error in createExamSubject:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const updateExamSubject = async (req, res) => {
+    const { id } = req.params;
+    const { name, code, gradeLevels, stream, description, subcategories, icon, color, order } = req.body;
+    try {
+        const subject = await prisma.examSubject.update({
+            where: { id },
+            data: {
+                ...(name && { name }),
+                ...(code !== undefined && { code }),
+                ...(Array.isArray(gradeLevels) && { gradeLevels: gradeLevels.map(g => parseInt(g, 10)) }),
+                ...(stream !== undefined && { stream: stream || null }),
+                ...(description !== undefined && { description }),
+                ...(subcategories !== undefined && { subcategories }),
+                ...(icon !== undefined && { icon }),
+                ...(color !== undefined && { color }),
+                ...(order !== undefined && { order: parseInt(order, 10) })
+            }
+        });
+        res.json(subject);
+    } catch (err) {
+        console.error("Error in updateExamSubject:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const deleteExamSubject = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.examSubject.delete({ where: { id } });
+        res.json({ message: "Subject deleted successfully" });
+    } catch (err) {
+        console.error("Error in deleteExamSubject:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const getAdminExams = async (req, res) => {
+    const { gradeLevel, subjectId, stream } = req.query;
+    try {
+        const whereClause = {};
+        if (gradeLevel) whereClause.gradeLevel = parseInt(gradeLevel, 10);
+        if (subjectId) whereClause.subjectId = subjectId;
+        if (stream && stream !== "ALL") whereClause.stream = stream;
+
+        const exams = await prisma.nationalExam.findMany({
+            where: whereClause,
+            orderBy: [{ gradeLevel: "asc" }, { year: "desc" }, { order: "asc" }],
+            include: {
+                subject: { select: { id: true, name: true, color: true, icon: true, code: true } },
+                _count: { select: { questions: true, attempts: true } }
+            }
+        });
+        res.json(exams);
+    } catch (err) {
+        console.error("Error in getAdminExams:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const getAdminExamDetail = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const exam = await prisma.nationalExam.findUnique({
+            where: { id },
+            include: {
+                subject: true,
+                questions: {
+                    orderBy: { order: "asc" },
+                    include: {
+                        options: { orderBy: { order: "asc" } }
+                    }
+                }
+            }
+        });
+        if (!exam) return res.status(404).json({ message: "National exam not found" });
+        res.json(exam);
+    } catch (err) {
+        console.error("Error in getAdminExamDetail:", err);
         res.status(500).json({ message: "Server error", detail: err.message });
     }
 };
@@ -772,10 +891,71 @@ export const createNationalExam = async (req, res) => {
                 passingScore: passingScore ? parseInt(passingScore, 10) : 50,
                 isPremium: Boolean(isPremium),
                 order: order ?? 0
+            },
+            include: {
+                subject: true,
+                _count: { select: { questions: true } }
             }
         });
         res.status(201).json(exam);
     } catch (err) {
+        console.error("Error in createNationalExam:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const updateNationalExam = async (req, res) => {
+    const { id } = req.params;
+    const { title, year, gradeLevel, stream, durationMinutes, passingScore, isPremium, order } = req.body;
+    try {
+        const exam = await prisma.nationalExam.update({
+            where: { id },
+            data: {
+                ...(title && { title }),
+                ...(year && { year: parseInt(year, 10) }),
+                ...(gradeLevel && { gradeLevel: parseInt(gradeLevel, 10) }),
+                ...(stream !== undefined && { stream: stream || null }),
+                ...(durationMinutes && { durationMinutes: parseInt(durationMinutes, 10) }),
+                ...(passingScore && { passingScore: parseInt(passingScore, 10) }),
+                ...(isPremium !== undefined && { isPremium: Boolean(isPremium) }),
+                ...(order !== undefined && { order: parseInt(order, 10) })
+            },
+            include: {
+                subject: true,
+                _count: { select: { questions: true } }
+            }
+        });
+        res.json(exam);
+    } catch (err) {
+        console.error("Error in updateNationalExam:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const deleteNationalExam = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.nationalExam.delete({ where: { id } });
+        res.json({ message: "Exam deleted successfully" });
+    } catch (err) {
+        console.error("Error in deleteNationalExam:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const getExamQuestions = async (req, res) => {
+    const { examId } = req.params;
+    try {
+        const questions = await prisma.examQuestion.findMany({
+            where: { examId },
+            orderBy: { order: "asc" },
+            include: {
+                options: { orderBy: { order: "asc" } }
+            }
+        });
+        res.json(questions);
+    } catch (err) {
+        console.error("Error in getExamQuestions:", err);
         res.status(500).json({ message: "Server error", detail: err.message });
     }
 };
@@ -785,27 +965,87 @@ export const addExamQuestion = async (req, res) => {
     const { text, type, resourceUrl, explanation, order, options } = req.body;
 
     try {
+        let questionOrder = order;
+        if (questionOrder === undefined || questionOrder === null) {
+            const count = await prisma.examQuestion.count({ where: { examId } });
+            questionOrder = count + 1;
+        }
+
         const question = await prisma.examQuestion.create({
             data: {
                 examId,
                 text,
                 type: type || "SINGLE_CHOICE",
-                resourceUrl,
-                explanation,
-                order: order ?? 1,
+                resourceUrl: resourceUrl || null,
+                explanation: explanation || null,
+                order: questionOrder,
                 options: {
                     create: (options || []).map((opt, idx) => ({
                         text: opt.text,
                         isCorrect: Boolean(opt.isCorrect),
-                        imageUrl: opt.imageUrl,
+                        imageUrl: opt.imageUrl || null,
                         order: opt.order ?? idx + 1
                     }))
                 }
             },
-            include: { options: true }
+            include: { options: { orderBy: { order: "asc" } } }
         });
         res.status(201).json(question);
     } catch (err) {
+        console.error("Error in addExamQuestion:", err);
         res.status(500).json({ message: "Server error", detail: err.message });
     }
 };
+
+export const updateExamQuestion = async (req, res) => {
+    const { questionId } = req.params;
+    const { text, type, resourceUrl, explanation, options } = req.body;
+
+    try {
+        const updated = await prisma.$transaction(async (tx) => {
+            await tx.examQuestion.update({
+                where: { id: questionId },
+                data: {
+                    ...(text && { text }),
+                    ...(type && { type }),
+                    ...(resourceUrl !== undefined && { resourceUrl: resourceUrl || null }),
+                    ...(explanation !== undefined && { explanation: explanation || null }),
+                }
+            });
+
+            if (Array.isArray(options) && options.length > 0) {
+                await tx.examQuestionOption.deleteMany({ where: { questionId } });
+                await tx.examQuestionOption.createMany({
+                    data: options.map((opt, idx) => ({
+                        questionId,
+                        text: opt.text,
+                        isCorrect: Boolean(opt.isCorrect),
+                        imageUrl: opt.imageUrl || null,
+                        order: opt.order ?? idx + 1
+                    }))
+                });
+            }
+
+            return tx.examQuestion.findUnique({
+                where: { id: questionId },
+                include: { options: { orderBy: { order: "asc" } } }
+            });
+        });
+        res.json(updated);
+    } catch (err) {
+        console.error("Error in updateExamQuestion:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const deleteExamQuestion = async (req, res) => {
+    const { questionId } = req.params;
+    try {
+        await prisma.examQuestion.delete({ where: { id: questionId } });
+        res.json({ message: "Question deleted successfully" });
+    } catch (err) {
+        console.error("Error in deleteExamQuestion:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+

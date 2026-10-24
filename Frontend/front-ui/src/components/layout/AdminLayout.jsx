@@ -14,6 +14,7 @@ const NAV_ITEMS = [
     { name: 'Question Bank', path: '/admin/question-bank', icon: AcademicCapIcon },
     { name: 'Quizzes', path: '/admin/quizzes', icon: QuestionMarkCircleIcon },
     { name: 'Mock Exams', path: '/admin/mock-exams', icon: DocumentCheckIcon },
+    { name: 'National Exams', path: '/admin/national-exams', icon: ClipboardDocumentCheckIcon },
 ];
 
 const BOTTOM_NAV_ITEMS = [

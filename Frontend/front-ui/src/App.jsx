@@ -31,6 +31,7 @@ import AdminCourses from './pages/admin/Courses';
 import AdminQuestionBank from './pages/admin/QuestionBank';
 import AdminQuizzes from './pages/admin/Quizzes';
 import AdminMockExams from './pages/admin/MockExams';
+import AdminNationalExams from './pages/admin/NationalExams';
 
 function App() {
   return (
@@ -75,6 +76,7 @@ function App() {
               <Route path="progress" element={<ComingSoon title="Analytics" />} />
               <Route path="quizzes" element={<AdminQuizzes />} />
               <Route path="mock-exams" element={<AdminMockExams />} />
+              <Route path="national-exams" element={<AdminNationalExams />} />
               <Route path="review" element={<ComingSoon title="Review Status" />} />
               <Route path="notifications" element={<ComingSoon title="Notifications" />} />
               <Route path="settings" element={<ComingSoon title="Settings" />} />
