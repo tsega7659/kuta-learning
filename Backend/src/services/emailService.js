@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 const getResendClient = () => {
-    const apiKey = process.env.RESEND_API_KEY;
+    const apiKey = (process.env.RESEND_API_KEY || process.env.RESEND_API_Key || process.env.resend_api_key || "").trim();
     if (!apiKey) return null;
     return new Resend(apiKey);
 };

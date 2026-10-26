@@ -8,6 +8,7 @@ import compression from "compression";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(compression());
 
 const allowedOrigins = process.env.CORS_ORIGINS
