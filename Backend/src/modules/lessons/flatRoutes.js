@@ -88,7 +88,8 @@ router.get("/:id", authenticateToken, async (req, res) => {
             }
         });
     } catch (err) {
-        res.status(500).json({ message: "Server Error", error: err.message });
+        console.error("Error fetching lesson:", err);
+        res.status(500).json({ message: "Server error fetching lesson" });
     }
 });
 

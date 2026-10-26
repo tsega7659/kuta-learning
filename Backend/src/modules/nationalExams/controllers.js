@@ -445,7 +445,8 @@ export const saveExamProgress = async (req, res) => {
 
     try {
         const attempt = await prisma.nationalExamAttempt.findUnique({
-            where: { id: attemptId }
+            where: { id: attemptId },
+            include: { exam: { select: { durationMinutes: true } } }
         });
 
         if (!attempt || attempt.studentId !== studentId) {
@@ -456,31 +457,42 @@ export const saveExamProgress = async (req, res) => {
             return res.status(400).json({ message: "Cannot save progress for an already submitted exam" });
         }
 
-        // Upsert answers
-        if (Array.isArray(answers) && answers.length > 0) {
-            for (const ans of answers) {
-                if (!ans.questionId) continue;
-                await prisma.nationalExamAnswer.upsert({
-                    where: {
-                        attemptId_questionId: {
-                            attemptId,
-                            questionId: ans.questionId
-                        }
-                    },
-                    update: {
-                        selectedOptionId: ans.selectedOptionId || null,
-                        textResponse: ans.textResponse || null,
-                        isFlagged: Boolean(ans.isFlagged),
-                    },
-                    create: {
-                        attemptId,
-                        questionId: ans.questionId,
-                        selectedOptionId: ans.selectedOptionId || null,
-                        textResponse: ans.textResponse || null,
-                        isFlagged: Boolean(ans.isFlagged),
-                        isCorrect: false
-                    }
+        // Server-side check if time limit has expired (with 10-minute network buffer)
+        const durationMinutes = attempt.exam?.durationMinutes || 60;
+        const maxAllowedSeconds = (durationMinutes * 60) + 600;
+        if (attempt.startedAt) {
+            const elapsed = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
+            if (elapsed > maxAllowedSeconds) {
+                return res.status(400).json({
+                    message: "Exam time limit has expired.",
+                    timeExpired: true
                 });
+            }
+        }
+
+        // Bulk upsert answers efficiently instead of sequential query loop
+        if (Array.isArray(answers) && answers.length > 0) {
+            const validAnswers = answers.filter(a => a && a.questionId);
+            if (validAnswers.length > 0) {
+                const questionIds = validAnswers.map(a => a.questionId);
+                await prisma.$transaction([
+                    prisma.nationalExamAnswer.deleteMany({
+                        where: {
+                            attemptId,
+                            questionId: { in: questionIds }
+                        }
+                    }),
+                    prisma.nationalExamAnswer.createMany({
+                        data: validAnswers.map(ans => ({
+                            attemptId,
+                            questionId: ans.questionId,
+                            selectedOptionId: ans.selectedOptionId || null,
+                            textResponse: ans.textResponse || null,
+                            isFlagged: Boolean(ans.isFlagged),
+                            isCorrect: false
+                        }))
+                    })
+                ]);
             }
         }
 
@@ -495,7 +507,7 @@ export const saveExamProgress = async (req, res) => {
         res.json({ message: "Progress saved successfully" });
     } catch (err) {
         console.error("Error in saveExamProgress:", err);
-        res.status(500).json({ message: "Server error", detail: err.message });
+        res.status(500).json({ message: "Server error saving exam progress" });
     }
 };
 
@@ -529,6 +541,34 @@ export const submitExamAttempt = async (req, res) => {
         }
 
         const questions = attempt.exam.questions;
+        if (!questions || questions.length === 0) {
+            return res.status(400).json({ message: "Cannot submit an exam with no questions" });
+        }
+
+        // Server-Side Exam Timer Enforcement (Duration + 10-minute grace period for latency)
+        const durationMinutes = attempt.exam.durationMinutes || 60;
+        const maxAllowedSeconds = (durationMinutes * 60) + 600;
+        if (attempt.startedAt) {
+            const elapsed = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
+            if (elapsed > maxAllowedSeconds) {
+                // Auto-close attempt
+                await prisma.nationalExamAttempt.update({
+                    where: { id: attemptId },
+                    data: {
+                        status: "SUBMITTED",
+                        timeRemainingSeconds: 0,
+                        submittedAt: new Date()
+                    }
+                });
+                return res.status(400).json({
+                    message: "Exam submission rejected: Exam time limit has expired.",
+                    timeExpired: true,
+                    allowedDurationMinutes: durationMinutes,
+                    elapsedMinutes: Math.round(elapsed / 60)
+                });
+            }
+        }
+
         const maxScore = questions.length;
         let score = 0;
 
@@ -565,6 +605,7 @@ export const submitExamAttempt = async (req, res) => {
             if (isCorrect) score++;
 
             processedAnswers.push({
+                attemptId,
                 questionId: q.id,
                 selectedOptionId: userAns?.selectedOptionId || null,
                 textResponse: userAns?.textResponse || null,
@@ -577,33 +618,19 @@ export const submitExamAttempt = async (req, res) => {
         const passed = accuracyPercentage >= attempt.exam.passingScore;
         const incorrectAnswers = maxScore - score;
 
-        // Transaction to save answers and update attempt
+        // Transaction to save answers and update attempt using high-performance bulk operations
         await prisma.$transaction(async (tx) => {
-            for (const item of processedAnswers) {
-                await tx.nationalExamAnswer.upsert({
-                    where: {
-                        attemptId_questionId: {
-                            attemptId,
-                            questionId: item.questionId
-                        }
-                    },
-                    update: {
-                        selectedOptionId: item.selectedOptionId,
-                        textResponse: item.textResponse,
-                        isFlagged: item.isFlagged,
-                        isCorrect: item.isCorrect
-                    },
-                    create: {
-                        attemptId,
-                        questionId: item.questionId,
-                        selectedOptionId: item.selectedOptionId,
-                        textResponse: item.textResponse,
-                        isFlagged: item.isFlagged,
-                        isCorrect: item.isCorrect
-                    }
-                });
-            }
+            // Delete previous answers in one query
+            await tx.nationalExamAnswer.deleteMany({
+                where: { attemptId }
+            });
 
+            // Bulk insert all graded answers in a single batch
+            await tx.nationalExamAnswer.createMany({
+                data: processedAnswers
+            });
+
+            // Update attempt record
             await tx.nationalExamAttempt.update({
                 where: { id: attemptId },
                 data: {
@@ -635,7 +662,7 @@ export const submitExamAttempt = async (req, res) => {
         });
     } catch (err) {
         console.error("Error in submitExamAttempt:", err);
-        res.status(500).json({ message: "Server error", detail: err.message });
+        res.status(500).json({ message: "Server error submitting exam attempt" });
     }
 };
 

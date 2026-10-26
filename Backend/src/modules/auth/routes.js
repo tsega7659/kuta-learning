@@ -15,13 +15,14 @@ import {
     updateProfile,
 } from "./controllers.js";
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
-import { otpRateLimiter } from "../../middlewares/rateLimiter.js";
+import { otpRateLimiter, authRateLimiter } from "../../middlewares/rateLimiter.js";
 
 const router = Router();
 
 // Registration for Grades (gradeLevel is optional on signup; chosen on onboarding)
 router.post(
     "/register",
+    authRateLimiter,
     [
         body("email").isEmail(),
         body("password").isLength({ min: 6 }),
@@ -34,6 +35,7 @@ router.post(
 
 router.post(
     "/register/grades",
+    authRateLimiter,
     [
         body("email").isEmail(),
         body("password").isLength({ min: 6 }),
@@ -47,6 +49,7 @@ router.post(
 // Independent Registration for Kids (selects grade 1-4 directly)
 router.post(
     "/register/kids",
+    authRateLimiter,
     [
         body("email").isEmail(),
         body("password").isLength({ min: 6 }),
@@ -56,7 +59,7 @@ router.post(
     registerKids
 );
 
-router.post("/login", [body("email").isEmail(), body("password").notEmpty()], login);
+router.post("/login", authRateLimiter, [body("email").isEmail(), body("password").notEmpty()], login);
 
 // Refresh Token Route (OAuth 2.0 / JWT rotation)
 router.post("/refresh-token", [body("refreshToken").notEmpty()], refreshToken);

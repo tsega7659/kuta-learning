@@ -2,7 +2,27 @@ import { prisma } from "../../prisma.js";
 
 export const getAllCourses = async (req, res) => {
     try {
+        const page = req.query.page ? Math.max(1, parseInt(req.query.page, 10)) : 1;
+        const limit = req.query.limit ? Math.min(100, Math.max(1, parseInt(req.query.limit, 10))) : 50;
+        const skip = (page - 1) * limit;
+
+        let gradeLevel = req.query.gradeLevel ? parseInt(req.query.gradeLevel, 10) : null;
+        if (!gradeLevel && req.user && req.user.role === "STUDENT") {
+            const profile = await prisma.studentProfile.findUnique({
+                where: { userId: req.user.id },
+                select: { gradeLevel: true }
+            });
+            if (profile?.gradeLevel) {
+                gradeLevel = profile.gradeLevel;
+            }
+        }
+
+        const where = gradeLevel ? { gradeLevel } : {};
+
         const courses = await prisma.course.findMany({
+            where,
+            skip,
+            take: limit,
             orderBy: { createdAt: "desc" },
             include: {
                 chapters: {
