@@ -4,6 +4,7 @@ import {
     register,
     registerKids,
     login,
+    googleAuth,
     refreshToken,
     me,
     forgotPassword,
@@ -18,6 +19,21 @@ import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { otpRateLimiter, authRateLimiter } from "../../middlewares/rateLimiter.js";
 
 const router = Router();
+
+// Google OAuth Sign-In / Sign-Up
+router.post(
+    "/google",
+    authRateLimiter,
+    [
+        body().custom((value, { req }) => {
+            if (!req.body.credential && !req.body.idToken && !req.body.token) {
+                throw new Error("Google credential or idToken is required");
+            }
+            return true;
+        }),
+    ],
+    googleAuth
+);
 
 // Registration for Grades (gradeLevel is optional on signup; chosen on onboarding)
 router.post(

@@ -1,8 +1,11 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../../prisma.js";
 import { validationResult } from "express-validator";
 import { sendOtpEmail } from "../../services/emailService.js";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const formatUserProfile = (user) => {
     const displayName = user.studentProfile?.name ?? user.email.split("@")[0];
@@ -166,6 +169,12 @@ export const login = async (req, res) => {
         });
         if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
+        if (!user.passwordHash) {
+            return res.status(400).json({
+                message: "This account was registered with Google. Please use Google Sign-In.",
+            });
+        }
+
         const match = await bcrypt.compare(password, user.passwordHash);
         if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
@@ -180,6 +189,101 @@ export const login = async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error" });
+    }
+};
+
+export const googleAuth = async (req, res) => {
+    if (!validateRequest(req, res)) return;
+
+    const idToken = req.body.credential || req.body.idToken || req.body.token;
+    if (!idToken) {
+        return res.status(400).json({ message: "Google credential/token is required." });
+    }
+
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
+            return res.status(400).json({ message: "Invalid Google token payload." });
+        }
+
+        if (!payload.email_verified) {
+            return res.status(400).json({ message: "Google email is not verified." });
+        }
+
+        const { email, sub: googleId, name, picture } = payload;
+
+        // Find user by either linked googleId or email
+        let user = await prisma.user.findFirst({
+            where: {
+                OR: [{ googleId }, { email }],
+            },
+            include: { studentProfile: true },
+        });
+
+        if (user) {
+            // If user signed up previously by email/password, link their Google account
+            if (!user.googleId) {
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { googleId },
+                    include: { studentProfile: true },
+                });
+            }
+            // Update avatar if currently null
+            if (user.studentProfile && !user.studentProfile.avatarUrl && picture) {
+                await prisma.studentProfile.update({
+                    where: { id: user.studentProfile.id },
+                    data: { avatarUrl: picture },
+                });
+                user.studentProfile.avatarUrl = picture;
+            }
+        } else {
+            // New user registration
+            user = await prisma.$transaction(async (tx) => {
+                const newUser = await tx.user.create({
+                    data: {
+                        email,
+                        googleId,
+                        passwordHash: null,
+                        role: "STUDENT",
+                    },
+                });
+
+                await tx.studentProfile.create({
+                    data: {
+                        userId: newUser.id,
+                        name: name || email.split("@")[0],
+                        avatarUrl: picture || null,
+                        onboardingCompleted: false,
+                    },
+                });
+
+                return tx.user.findUnique({
+                    where: { id: newUser.id },
+                    include: { studentProfile: true },
+                });
+            });
+        }
+
+        const { token, refreshToken: newRefreshToken } = generateTokens(user);
+
+        res.status(200).json({
+            token,
+            refreshToken: newRefreshToken,
+            role: user.role,
+            profile: formatUserProfile(user),
+        });
+    } catch (err) {
+        console.error("Google authentication error:", err);
+        res.status(401).json({
+            message: "Google authentication failed",
+            detail: err.message,
+        });
     }
 };
 
@@ -394,6 +498,12 @@ export const changePassword = async (req, res) => {
         if (!user) return res.status(404).json({ message: "User not found" });
 
         // Check current password
+        if (!user.passwordHash) {
+            return res.status(400).json({
+                message: "Accounts registered with Google do not have a password set. Use Forgot Password to create one.",
+            });
+        }
+
         const match = await bcrypt.compare(currentPassword, user.passwordHash);
         if (!match) {
             return res.status(400).json({ message: "Current password is incorrect." });
