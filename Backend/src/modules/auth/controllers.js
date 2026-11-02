@@ -6,6 +6,12 @@ import { validationResult } from "express-validator";
 import { sendOtpEmail } from "../../services/emailService.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const getAllowedAudiences = () =>
+    [
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_ANDROID_CLIENT_ID,
+        process.env.GOOGLE_IOS_CLIENT_ID,
+    ].filter(Boolean);
 
 const formatUserProfile = (user) => {
     const displayName = user.studentProfile?.name ?? user.email.split("@")[0];
@@ -201,9 +207,10 @@ export const googleAuth = async (req, res) => {
     }
 
     try {
+        const audiences = getAllowedAudiences();
         const ticket = await googleClient.verifyIdToken({
             idToken,
-            audience: process.env.GOOGLE_CLIENT_ID,
+            audience: audiences.length > 0 ? audiences : process.env.GOOGLE_CLIENT_ID,
         });
 
         const payload = ticket.getPayload();
