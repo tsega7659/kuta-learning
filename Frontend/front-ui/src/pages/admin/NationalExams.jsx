@@ -61,10 +61,10 @@ const GRADE_CONFIG = {
 };
 
 const DEFAULT_OPTIONS = [
-    { text: '', isCorrect: true, imageUrl: '' },
-    { text: '', isCorrect: false, imageUrl: '' },
-    { text: '', isCorrect: false, imageUrl: '' },
-    { text: '', isCorrect: false, imageUrl: '' },
+    { text: '', isCorrect: true, imageUrl: '', imageFile: null, imagePreview: '' },
+    { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
+    { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
+    { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
 ];
 
 export default function AdminNationalExams() {
@@ -121,6 +121,11 @@ export default function AdminNationalExams() {
         text: '',
         explanation: '',
         resourceUrl: '',
+        resourceFile: null,
+        resourcePreview: '',
+        explanationImageUrl: '',
+        explanationImageFile: null,
+        explanationImagePreview: '',
         options: [...DEFAULT_OPTIONS.map(o => ({ ...o }))]
     });
 
@@ -234,11 +239,16 @@ export default function AdminNationalExams() {
             text: '',
             explanation: '',
             resourceUrl: '',
+            resourceFile: null,
+            resourcePreview: '',
+            explanationImageUrl: '',
+            explanationImageFile: null,
+            explanationImagePreview: '',
             options: [
-                { text: '', isCorrect: true, imageUrl: '' },
-                { text: '', isCorrect: false, imageUrl: '' },
-                { text: '', isCorrect: false, imageUrl: '' },
-                { text: '', isCorrect: false, imageUrl: '' },
+                { text: '', isCorrect: true, imageUrl: '', imageFile: null, imagePreview: '' },
+                { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
+                { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
+                { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
             ]
         });
         setShowQuestionModal(true);
@@ -250,15 +260,22 @@ export default function AdminNationalExams() {
         const opts = (q.options || []).map(o => ({
             text: o.text || '',
             isCorrect: Boolean(o.isCorrect),
-            imageUrl: o.imageUrl || ''
+            imageUrl: o.imageUrl || '',
+            imageFile: null,
+            imagePreview: o.imageUrl || ''
         }));
         while (opts.length < 4) {
-            opts.push({ text: '', isCorrect: false, imageUrl: '' });
+            opts.push({ text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' });
         }
         setQuestionForm({
             text: q.text || '',
             explanation: q.explanation || '',
             resourceUrl: q.resourceUrl || '',
+            resourceFile: null,
+            resourcePreview: q.resourceUrl || '',
+            explanationImageUrl: q.explanationImageUrl || '',
+            explanationImageFile: null,
+            explanationImagePreview: q.explanationImageUrl || '',
             options: opts
         });
         setShowQuestionModal(true);
@@ -316,14 +333,14 @@ export default function AdminNationalExams() {
     // ── Save Question ──
     const handleSaveQuestion = async (e, keepOpenForNext = false) => {
         if (e) e.preventDefault();
-        const validOptions = questionForm.options.filter(o => o.text.trim().length > 0);
+        const validOptions = questionForm.options.filter(o => o.text.trim().length > 0 || o.imageUrl || o.imageFile);
         if (validOptions.length < 2) {
-            alert('Please provide at least 2 non-empty options.');
+            alert('Please provide at least 2 non-empty options (text or image).');
             return;
         }
-        const hasCorrect = questionForm.options.some(o => o.isCorrect && o.text.trim().length > 0);
+        const hasCorrect = questionForm.options.some(o => o.isCorrect && (o.text.trim().length > 0 || o.imageUrl || o.imageFile));
         if (!hasCorrect) {
-            alert('Please select one of the non-empty options as the correct answer (green checkmark/radio).');
+            alert('Please select one of the valid options as the correct answer (green checkmark/radio).');
             return;
         }
 
@@ -332,21 +349,42 @@ export default function AdminNationalExams() {
 
         setSubmitting(true);
         try {
+            const formData = new FormData();
+            formData.append('text', questionForm.text || '');
+            formData.append('type', 'SINGLE_CHOICE');
+            formData.append('explanation', questionForm.explanation || '');
+
+            if (questionForm.resourceFile) {
+                formData.append('questionImage', questionForm.resourceFile);
+            } else if (questionForm.resourceUrl) {
+                formData.append('resourceUrl', questionForm.resourceUrl);
+            }
+
+            if (questionForm.explanationImageFile) {
+                formData.append('explanationImage', questionForm.explanationImageFile);
+            } else if (questionForm.explanationImageUrl) {
+                formData.append('explanationImageUrl', questionForm.explanationImageUrl);
+            }
+
+            const optionsPayload = validOptions.map((opt, idx) => {
+                if (opt.imageFile) {
+                    formData.append(`optionImage_${idx}`, opt.imageFile);
+                }
+                return {
+                    text: opt.text || '',
+                    isCorrect: Boolean(opt.isCorrect),
+                    imageUrl: opt.imageUrl || null
+                };
+            });
+            formData.append('options', JSON.stringify(optionsPayload));
+
             if (editingQuestion) {
-                await api.put(`/national-exams/admin/questions/${editingQuestion.id}`, {
-                    text: questionForm.text,
-                    type: 'SINGLE_CHOICE',
-                    explanation: questionForm.explanation,
-                    resourceUrl: questionForm.resourceUrl,
-                    options: validOptions
+                await api.put(`/national-exams/admin/questions/${editingQuestion.id}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
                 });
             } else {
-                await api.post(`/national-exams/exams/${examToUse.id}/questions`, {
-                    text: questionForm.text,
-                    type: 'SINGLE_CHOICE',
-                    explanation: questionForm.explanation,
-                    resourceUrl: questionForm.resourceUrl,
-                    options: validOptions
+                await api.post(`/national-exams/exams/${examToUse.id}/questions`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
                 });
             }
 
@@ -366,11 +404,16 @@ export default function AdminNationalExams() {
                     text: '',
                     explanation: '',
                     resourceUrl: '',
+                    resourceFile: null,
+                    resourcePreview: '',
+                    explanationImageUrl: '',
+                    explanationImageFile: null,
+                    explanationImagePreview: '',
                     options: [
-                        { text: '', isCorrect: true, imageUrl: '' },
-                        { text: '', isCorrect: false, imageUrl: '' },
-                        { text: '', isCorrect: false, imageUrl: '' },
-                        { text: '', isCorrect: false, imageUrl: '' },
+                        { text: '', isCorrect: true, imageUrl: '', imageFile: null, imagePreview: '' },
+                        { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
+                        { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
+                        { text: '', isCorrect: false, imageUrl: '', imageFile: null, imagePreview: '' },
                     ]
                 });
                 setEditingQuestion(null);
@@ -766,13 +809,13 @@ export default function AdminNationalExams() {
                                             {q.text}
                                         </p>
 
-                                        {/* Diagram if any */}
+                                        {/* Question Image / Diagram */}
                                         {q.resourceUrl && (
                                             <div className="pl-9">
                                                 <img
                                                     src={q.resourceUrl}
-                                                    alt="Exam Diagram"
-                                                    className="max-h-44 rounded-lg border border-gray-200 bg-white p-1.5 object-contain"
+                                                    alt="Question Diagram"
+                                                    className="max-h-48 rounded-xl border border-gray-200 bg-white p-1.5 object-contain shadow-xs"
                                                     onError={(e) => { e.target.style.display = 'none'; }}
                                                 />
                                             </div>
@@ -796,7 +839,16 @@ export default function AdminNationalExams() {
                                                         }`}>
                                                             {letter}
                                                         </span>
-                                                        <span className="flex-1 truncate">{opt.text}</span>
+                                                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                                                            {opt.imageUrl && (
+                                                                <img
+                                                                    src={opt.imageUrl}
+                                                                    alt={letter}
+                                                                    className="w-8 h-8 rounded object-cover border border-gray-200 shrink-0"
+                                                                />
+                                                            )}
+                                                            <span className="truncate">{opt.text}</span>
+                                                        </div>
                                                         {opt.isCorrect && (
                                                             <CheckIcon className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />
                                                         )}
@@ -806,12 +858,21 @@ export default function AdminNationalExams() {
                                         </div>
 
                                         {/* Explanation */}
-                                        {q.explanation && (
-                                            <div className="pl-9 pt-1">
-                                                <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 p-2 rounded-lg font-medium">
-                                                    <span className="font-bold mr-1">💡 Solution:</span>
-                                                    {q.explanation}
-                                                </p>
+                                        {(q.explanation || q.explanationImageUrl) && (
+                                            <div className="pl-9 pt-1 space-y-2">
+                                                {q.explanation && (
+                                                    <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-200 p-2.5 rounded-lg font-medium">
+                                                        <span className="font-bold mr-1">💡 Solution:</span>
+                                                        {q.explanation}
+                                                    </p>
+                                                )}
+                                                {q.explanationImageUrl && (
+                                                    <img
+                                                        src={q.explanationImageUrl}
+                                                        alt="Solution Diagram"
+                                                        className="max-h-40 rounded-lg border border-amber-200 bg-white p-1.5 object-contain"
+                                                    />
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -1116,18 +1177,54 @@ export default function AdminNationalExams() {
                                 />
                             </div>
 
-                            {/* Optional Diagram URL */}
+                            {/* Question Image / Diagram Upload */}
                             <div>
                                 <label className="block text-xs font-extrabold text-gray-700 mb-1">
-                                    Diagram / Figure URL (Optional)
+                                    Question Image / Diagram (Optional)
                                 </label>
-                                <input
-                                    type="url"
-                                    value={questionForm.resourceUrl}
-                                    onChange={(e) => setQuestionForm({ ...questionForm, resourceUrl: e.target.value })}
-                                    placeholder="https://example.com/diagram.png"
-                                    className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs font-medium focus:border-[#0F4C81] focus:outline-none"
-                                />
+                                <div className="flex items-center gap-3">
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
+                                        <PhotoIcon className="w-4 h-4 text-[#0F4C81]" />
+                                        <span>{questionForm.resourcePreview ? 'Change Image' : 'Upload Image'}</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setQuestionForm({
+                                                        ...questionForm,
+                                                        resourceFile: file,
+                                                        resourcePreview: URL.createObjectURL(file),
+                                                        resourceUrl: ''
+                                                    });
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                    {questionForm.resourcePreview && (
+                                        <div className="flex items-center gap-2">
+                                            <img
+                                                src={questionForm.resourcePreview}
+                                                alt="Preview"
+                                                className="h-10 w-10 object-cover rounded-lg border border-gray-200"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setQuestionForm({
+                                                    ...questionForm,
+                                                    resourceFile: null,
+                                                    resourcePreview: '',
+                                                    resourceUrl: ''
+                                                })}
+                                                className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* 4 Multiple Choice Options (A, B, C, D) */}
@@ -1173,18 +1270,61 @@ export default function AdminNationalExams() {
                                                 </button>
 
                                                 {/* Option Text */}
-                                                <input
-                                                    type="text"
-                                                    required={idx < 2}
-                                                    value={opt.text}
-                                                    onChange={(e) => {
-                                                        const updated = [...questionForm.options];
-                                                        updated[idx].text = e.target.value;
-                                                        setQuestionForm({ ...questionForm, options: updated });
-                                                    }}
-                                                    placeholder={`Option ${letter} ${selectedGrade === 6 ? '(ምርጫ ' + letter + ')' : ''}`}
-                                                    className="flex-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold focus:border-[#0F4C81] focus:outline-none bg-white"
-                                                />
+                                                <div className="flex-1 flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        required={idx < 2 && !opt.imagePreview}
+                                                        value={opt.text}
+                                                        onChange={(e) => {
+                                                            const updated = [...questionForm.options];
+                                                            updated[idx].text = e.target.value;
+                                                            setQuestionForm({ ...questionForm, options: updated });
+                                                        }}
+                                                        placeholder={`Option ${letter} ${selectedGrade === 6 ? '(ምርጫ ' + letter + ')' : ''}`}
+                                                        className="flex-1 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold focus:border-[#0F4C81] focus:outline-none bg-white"
+                                                    />
+                                                    <label className="cursor-pointer p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-500 hover:text-[#0F4C81] transition shrink-0" title="Upload image for this choice">
+                                                        <PhotoIcon className="w-4 h-4" />
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const updated = [...questionForm.options];
+                                                                    updated[idx].imageFile = file;
+                                                                    updated[idx].imagePreview = URL.createObjectURL(file);
+                                                                    updated[idx].imageUrl = '';
+                                                                    setQuestionForm({ ...questionForm, options: updated });
+                                                                }
+                                                            }}
+                                                        />
+                                                    </label>
+                                                    {opt.imagePreview && (
+                                                        <div className="relative group shrink-0">
+                                                            <img
+                                                                src={opt.imagePreview}
+                                                                alt={`Choice ${letter}`}
+                                                                className="w-7 h-7 object-cover rounded border border-gray-300"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updated = [...questionForm.options];
+                                                                    updated[idx].imageFile = null;
+                                                                    updated[idx].imagePreview = '';
+                                                                    updated[idx].imageUrl = '';
+                                                                    setQuestionForm({ ...questionForm, options: updated });
+                                                                }}
+                                                                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 shadow"
+                                                                title="Remove image"
+                                                            >
+                                                                <XMarkIcon className="w-2.5 h-2.5" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
 
                                                 {opt.isCorrect && (
                                                     <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
@@ -1197,8 +1337,8 @@ export default function AdminNationalExams() {
                                 </div>
                             </div>
 
-                            {/* Optional Explanation */}
-                            <div>
+                            {/* Optional Explanation & Explanation Image */}
+                            <div className="space-y-2">
                                 <label className="block text-xs font-extrabold text-gray-700 mb-1">
                                     Solution Explanation (Shown to student after submitting exam)
                                 </label>
@@ -1209,6 +1349,49 @@ export default function AdminNationalExams() {
                                     placeholder="Step-by-step solution or formula justification..."
                                     className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-xs font-medium focus:border-[#0F4C81] focus:outline-none"
                                 />
+                                <div className="flex items-center gap-3 pt-1">
+                                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-300 bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 transition">
+                                        <PhotoIcon className="w-4 h-4 text-[#0F4C81]" />
+                                        <span>{questionForm.explanationImagePreview ? 'Change Explanation Image' : 'Upload Explanation Image'}</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setQuestionForm({
+                                                        ...questionForm,
+                                                        explanationImageFile: file,
+                                                        explanationImagePreview: URL.createObjectURL(file),
+                                                        explanationImageUrl: ''
+                                                    });
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                    {questionForm.explanationImagePreview && (
+                                        <div className="flex items-center gap-2">
+                                            <img
+                                                src={questionForm.explanationImagePreview}
+                                                alt="Explanation preview"
+                                                className="h-10 w-10 object-cover rounded-lg border border-gray-200"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setQuestionForm({
+                                                    ...questionForm,
+                                                    explanationImageFile: null,
+                                                    explanationImagePreview: '',
+                                                    explanationImageUrl: ''
+                                                })}
+                                                className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

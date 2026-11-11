@@ -47,6 +47,7 @@ model User {
   practiceAttempts PracticeAttempt[]
   examAttempts     NationalExamAttempt[]
   noteProgress     NoteProgress[]
+  bookmarks        Bookmark[]
 }
 
 model StudentProfile {
@@ -168,7 +169,8 @@ model Question {
   type        QuestionType     @default(SINGLE_CHOICE)
   text        String
   resourceUrl String?          // For image-based questions
-  explanation String?
+  explanation         String?
+  explanationImageUrl String?
   order       Int
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -267,7 +269,8 @@ model BankQuestion {
   type        QuestionType         @default(SINGLE_CHOICE)
   text        String
   resourceUrl String?
-  explanation String?
+  explanation         String?
+  explanationImageUrl String?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
   options     BankQuestionOption[]
@@ -344,7 +347,8 @@ model ExamQuestion {
   type        QuestionType         @default(SINGLE_CHOICE)
   text        String
   resourceUrl String?
-  explanation String?
+  explanation         String?
+  explanationImageUrl String?
   order       Int
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
@@ -442,4 +446,26 @@ model NoteProgress {
   updatedAt      DateTime     @updatedAt
 
   @@unique([studentId, chapterId])
+}
+
+enum BookmarkType {
+  EXAM_QUESTION
+  NOTE_CHAPTER
+  COURSE_LESSON
+  QUIZ_QUESTION
+}
+
+model Bookmark {
+  id         String       @id @default(uuid())
+  studentId  String
+  student    User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type       BookmarkType @default(EXAM_QUESTION)
+  itemId     String
+  title      String?
+  subjectId  String?
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+
+  @@unique([studentId, type, itemId])
+  @@index([studentId, type])
 }

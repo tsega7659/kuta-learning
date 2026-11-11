@@ -1,3 +1,4 @@
+import { uploadBufferToCloudinary } from "../../services/cloudinaryService.js";
 import { prisma } from "../../prisma.js";
 
 // Helper to determine student's effective grade and stream
@@ -987,13 +988,96 @@ export const getExamQuestions = async (req, res) => {
     }
 };
 
+// ── Process Question Files (Cloudinary / Local Upload) ────────────────────────
+const processQuestionFiles = async (req) => {
+    let finalResourceUrl = req.body.resourceUrl !== undefined ? req.body.resourceUrl : undefined;
+    let finalExplanationImageUrl = req.body.explanationImageUrl !== undefined ? req.body.explanationImageUrl : undefined;
+
+    let hasOptions = false;
+    let options = req.body.options;
+    if (typeof options === "string") {
+        try {
+            options = JSON.parse(options);
+            hasOptions = true;
+        } catch (e) {
+            console.warn("Failed to parse options JSON string:", e.message);
+        }
+    } else if (Array.isArray(options)) {
+        hasOptions = true;
+    }
+
+    const files = req.files || (req.file ? [req.file] : []);
+    for (const file of files) {
+        const field = (file.fieldname || "").trim();
+
+        if (/^(questionImage|question_image|resourceUrl|image|questionFile|question)$/i.test(field)) {
+            finalResourceUrl = await uploadBufferToCloudinary(file.buffer, {
+                folder: "kuta_learning/national_exams/questions",
+                filename: file.originalname || "question.png"
+            });
+        } else if (/^(explanationImage|explanation_image|explanationImageUrl|explanationFile|explanation)$/i.test(field)) {
+            finalExplanationImageUrl = await uploadBufferToCloudinary(file.buffer, {
+                folder: "kuta_learning/national_exams/explanations",
+                filename: file.originalname || "explanation.png"
+            });
+        } else {
+            const match = field.match(/option(?:Image|_image|s)?(?:\[|_)?(\d+)(?:\]|_image|Image)?/i);
+            if (match && match[1] !== undefined) {
+                const optIndex = parseInt(match[1], 10);
+                const uploadedUrl = await uploadBufferToCloudinary(file.buffer, {
+                    folder: "kuta_learning/national_exams/options",
+                    filename: file.originalname || `option_${optIndex}.png`
+                });
+
+                if (!Array.isArray(options)) {
+                    options = [];
+                }
+                hasOptions = true;
+
+                if (!options[optIndex]) {
+                    options[optIndex] = { text: "", isCorrect: false };
+                }
+                options[optIndex].imageUrl = uploadedUrl;
+            }
+        }
+    }
+
+    return {
+        resourceUrl: finalResourceUrl,
+        explanationImageUrl: finalExplanationImageUrl,
+        options: hasOptions ? options : undefined
+    };
+};
+
+export const uploadExamImage = async (req, res) => {
+    try {
+        const file = req.file || (req.files && req.files[0]);
+        if (!file) {
+            return res.status(400).json({ message: "No image file provided" });
+        }
+        const url = await uploadBufferToCloudinary(file.buffer, {
+            folder: "kuta_learning/national_exams",
+            filename: file.originalname || "image.png"
+        });
+        res.status(201).json({ url });
+    } catch (err) {
+        console.error("Error in uploadExamImage:", err);
+        res.status(500).json({ message: "Upload failed", detail: err.message });
+    }
+};
+
 export const addExamQuestion = async (req, res) => {
     const { examId } = req.params;
-    const { text, type, resourceUrl, explanation, order, options } = req.body;
+    let { text, type, resourceUrl, explanationImageUrl, explanation, order } = req.body;
 
     try {
-        let questionOrder = order;
-        if (questionOrder === undefined || questionOrder === null) {
+        const fileData = await processQuestionFiles(req);
+        if (fileData.resourceUrl !== undefined) resourceUrl = fileData.resourceUrl;
+        if (fileData.explanationImageUrl !== undefined) explanationImageUrl = fileData.explanationImageUrl;
+        const options = fileData.options || [];
+
+        let questionOrder = order ? parseInt(order, 10) : undefined;
+        if (questionOrder === undefined || isNaN(questionOrder)) {
             const count = await prisma.examQuestion.count({ where: { examId } });
             questionOrder = count + 1;
         }
@@ -1001,17 +1085,18 @@ export const addExamQuestion = async (req, res) => {
         const question = await prisma.examQuestion.create({
             data: {
                 examId,
-                text,
+                text: text || (resourceUrl ? "See attached question" : ""),
                 type: type || "SINGLE_CHOICE",
                 resourceUrl: resourceUrl || null,
+                explanationImageUrl: explanationImageUrl || null,
                 explanation: explanation || null,
                 order: questionOrder,
                 options: {
-                    create: (options || []).map((opt, idx) => ({
-                        text: opt.text,
-                        isCorrect: Boolean(opt.isCorrect),
+                    create: options.map((opt, idx) => ({
+                        text: opt.text || "",
+                        isCorrect: Boolean(opt.isCorrect === true || opt.isCorrect === "true"),
                         imageUrl: opt.imageUrl || null,
-                        order: opt.order ?? idx + 1
+                        order: opt.order ? parseInt(opt.order, 10) : idx + 1
                     }))
                 }
             },
@@ -1026,17 +1111,23 @@ export const addExamQuestion = async (req, res) => {
 
 export const updateExamQuestion = async (req, res) => {
     const { questionId } = req.params;
-    const { text, type, resourceUrl, explanation, options } = req.body;
+    let { text, type, resourceUrl, explanationImageUrl, explanation } = req.body;
 
     try {
+        const fileData = await processQuestionFiles(req);
+        if (fileData.resourceUrl !== undefined) resourceUrl = fileData.resourceUrl;
+        if (fileData.explanationImageUrl !== undefined) explanationImageUrl = fileData.explanationImageUrl;
+        const options = fileData.options;
+
         const updated = await prisma.$transaction(async (tx) => {
             await tx.examQuestion.update({
                 where: { id: questionId },
                 data: {
-                    ...(text && { text }),
+                    ...(text !== undefined && { text }),
                     ...(type && { type }),
                     ...(resourceUrl !== undefined && { resourceUrl: resourceUrl || null }),
                     ...(explanation !== undefined && { explanation: explanation || null }),
+                    ...(explanationImageUrl !== undefined && { explanationImageUrl: explanationImageUrl || null }),
                 }
             });
 
@@ -1045,10 +1136,10 @@ export const updateExamQuestion = async (req, res) => {
                 await tx.examQuestionOption.createMany({
                     data: options.map((opt, idx) => ({
                         questionId,
-                        text: opt.text,
-                        isCorrect: Boolean(opt.isCorrect),
+                        text: opt.text || "",
+                        isCorrect: Boolean(opt.isCorrect === true || opt.isCorrect === "true"),
                         imageUrl: opt.imageUrl || null,
-                        order: opt.order ?? idx + 1
+                        order: opt.order ? parseInt(opt.order, 10) : idx + 1
                     }))
                 });
             }
