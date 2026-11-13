@@ -429,8 +429,29 @@ model NoteChapter {
   updatedAt          DateTime       @updatedAt
 
   progress           NoteProgress[]
+  notes              ShortNote[]
 
   @@unique([subjectId, gradeLevel, order])
+}
+
+model ShortNote {
+  id                 String      @id @default(uuid())
+  chapterId          String
+  chapter            NoteChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title              String
+  subtitle           String?
+  description        String?
+  content            String?
+  pdfUrl             String?
+  fileSize           String?
+  order              Int         @default(0)
+  learningObjectives String[] @default([])
+  resources          Json?
+  isPremium          Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@unique([chapterId, order])
 }
 
 model NoteProgress {

@@ -143,9 +143,17 @@ export const getSubjectNoteDetails = async (req, res) => {
                 progress: studentId ? {
                     where: { studentId },
                     take: 1
-                } : false
+                } : false,
+                notes: {
+                    orderBy: { order: "asc" }
+                }
             }
         });
+
+        const studentProfile = req.user?.role === "STUDENT"
+            ? await prisma.studentProfile.findUnique({ where: { userId: studentId } })
+            : null;
+        const canReadPremiumNotes = req.user?.role !== "STUDENT" || Boolean(studentProfile?.isPremium);
 
         // Compute total chapter bundle download info
         const totalSizeMB = (chapters.length * 5.2).toFixed(1); // Approximate or calculate
@@ -165,6 +173,19 @@ export const getSubjectNoteDetails = async (req, res) => {
                 isPremium: ch.isPremium,
                 isRead: prog?.isRead || false,
                 readPercentage: prog?.readPercentage || 0,
+                notes: ch.notes.map(note => ({
+                    id: note.id,
+                    title: note.title,
+                    subtitle: note.subtitle,
+                    description: note.description,
+                    content: canReadPremiumNotes || !note.isPremium ? note.content : null,
+                    pdfUrl: canReadPremiumNotes || !note.isPremium ? note.pdfUrl : null,
+                    fileSize: note.fileSize,
+                    order: note.order,
+                    learningObjectives: note.learningObjectives,
+                    resources: note.resources,
+                    isPremium: note.isPremium
+                }))
             };
         });
 
@@ -207,7 +228,8 @@ export const getChapterDetail = async (req, res) => {
                 progress: studentId ? {
                     where: { studentId },
                     take: 1
-                } : false
+                } : false,
+                notes: { orderBy: { order: "asc" } }
             }
         });
 
@@ -215,17 +237,17 @@ export const getChapterDetail = async (req, res) => {
             return res.status(404).json({ message: "Chapter note not found" });
         }
 
+        const studentProfile = req.user?.role === "STUDENT"
+            ? await prisma.studentProfile.findUnique({ where: { userId: studentId } })
+            : null;
+        const canReadPremiumNotes = req.user?.role !== "STUDENT" || Boolean(studentProfile?.isPremium);
+
         // Check premium status
-        if (chapter.isPremium) {
-            const studentProfile = await prisma.studentProfile.findUnique({
-                where: { userId: studentId }
+        if (chapter.isPremium && !canReadPremiumNotes) {
+            return res.status(403).json({
+                message: "This chapter note is for premium subscribers only.",
+                isPremiumRequired: true
             });
-            if (!studentProfile?.isPremium) {
-                return res.status(403).json({
-                    message: "This chapter note is for premium subscribers only.",
-                    isPremiumRequired: true
-                });
-            }
         }
 
         const prog = chapter.progress?.[0];
@@ -244,6 +266,19 @@ export const getChapterDetail = async (req, res) => {
             pdfUrl: chapter.pdfUrl,
             fileSize: chapter.fileSize,
             isPremium: chapter.isPremium,
+            notes: chapter.notes.map(note => ({
+                id: note.id,
+                title: note.title,
+                subtitle: note.subtitle,
+                description: note.description,
+                content: canReadPremiumNotes || !note.isPremium ? note.content : null,
+                pdfUrl: canReadPremiumNotes || !note.isPremium ? note.pdfUrl : null,
+                fileSize: note.fileSize,
+                order: note.order,
+                learningObjectives: note.learningObjectives,
+                resources: note.resources,
+                isPremium: note.isPremium
+            })),
             readProgress: {
                 isRead: prog?.isRead || false,
                 readPercentage: prog?.readPercentage || 0,
@@ -364,15 +399,46 @@ export const createNoteChapter = async (req, res) => {
     } = req.body;
 
     try {
+        const parsedGradeLevel = Number.parseInt(gradeLevel, 10);
+        if (!subjectId || !Number.isInteger(parsedGradeLevel) || !title?.trim()) {
+            return res.status(400).json({ message: "Subject, grade level, and title are required." });
+        }
+
+        const subject = await prisma.examSubject.findUnique({
+            where: { id: subjectId },
+            select: { gradeLevels: true }
+        });
+        if (!subject) {
+            return res.status(404).json({ message: "Subject not found." });
+        }
+        const subjectSupportsGrade = parsedGradeLevel >= 9 && parsedGradeLevel <= 12
+            ? subject.gradeLevels.some(level => level >= 9 && level <= 12)
+            : subject.gradeLevels.includes(parsedGradeLevel);
+        if (!subjectSupportsGrade) {
+            return res.status(400).json({ message: "This subject is not available for the selected grade." });
+        }
+        if (stream && !["NATURAL", "SOCIAL", "COMMON"].includes(stream)) {
+            return res.status(400).json({ message: "Invalid academic stream." });
+        }
+
+        let noteOrder = order;
+        if (noteOrder === undefined || noteOrder === null) {
+            const existing = await prisma.noteChapter.aggregate({
+                where: { subjectId, gradeLevel: parsedGradeLevel },
+                _max: { order: true }
+            });
+            noteOrder = (existing._max.order ?? -1) + 1;
+        }
+
         const chapter = await prisma.noteChapter.create({
             data: {
                 subjectId,
-                gradeLevel: parseInt(gradeLevel, 10),
+                gradeLevel: parsedGradeLevel,
                 stream: stream || null,
-                title,
+                title: title.trim(),
                 subtitle,
                 description,
-                order: order ?? 0,
+                order: noteOrder,
                 pdfUrl,
                 fileSize,
                 content,
@@ -384,6 +450,63 @@ export const createNoteChapter = async (req, res) => {
         res.status(201).json(chapter);
     } catch (err) {
         console.error("Error in createNoteChapter:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+export const createShortNote = async (req, res) => {
+    const { chapterId } = req.params;
+    const {
+        title,
+        subtitle,
+        description,
+        content,
+        pdfUrl,
+        fileSize,
+        learningObjectives,
+        resources,
+        isPremium
+    } = req.body;
+
+    if (!title?.trim()) {
+        return res.status(400).json({ message: "A short-note title is required." });
+    }
+    if (!content?.trim() && !pdfUrl) {
+        return res.status(400).json({ message: "Add note text or upload a PDF." });
+    }
+
+    try {
+        const chapter = await prisma.noteChapter.findUnique({
+            where: { id: chapterId },
+            select: { id: true }
+        });
+        if (!chapter) {
+            return res.status(404).json({ message: "Chapter not found." });
+        }
+
+        const existing = await prisma.shortNote.aggregate({
+            where: { chapterId },
+            _max: { order: true }
+        });
+
+        const note = await prisma.shortNote.create({
+            data: {
+                chapterId,
+                title: title.trim(),
+                subtitle: subtitle?.trim() || null,
+                description: description?.trim() || null,
+                content: content?.trim() || null,
+                pdfUrl: pdfUrl || null,
+                fileSize: fileSize || null,
+                order: (existing._max.order ?? -1) + 1,
+                learningObjectives: Array.isArray(learningObjectives) ? learningObjectives : [],
+                resources: resources || undefined,
+                isPremium: Boolean(isPremium)
+            }
+        });
+        res.status(201).json(note);
+    } catch (err) {
+        console.error("Error in createShortNote:", err);
         res.status(500).json({ message: "Server error", detail: err.message });
     }
 };

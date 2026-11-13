@@ -13,7 +13,7 @@ app.use(compression());
 
 const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
-    : ["http://localhost:5173", "http://localhost:5174","https://kuta-learning.vercel.app"];
+    : ["http://localhost:5173", "http://localhost:62428","http://localhost:5174","https://kuta-learning.vercel.app"];
 
 app.use(
     cors({

@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { EyeIcon, EyeSlashIcon, EnvelopeIcon, LockClosedIcon } from '@heroicons/react/24/outline';
-import { FcGoogle } from 'react-icons/fc';
-import { FaApple } from 'react-icons/fa';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -16,7 +14,7 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, logout } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,11 +22,18 @@ export default function Login() {
         setLoading(true);
         try {
             const user = await login(email, password);
-            if (user.role === 'STUDENT') {
-                navigate('/student/home');
-            } else {
-                navigate('/admin/dashboard');
+            if (user.role === 'CONTENT_MANAGER') {
+                const adminAppUrl = import.meta.env.VITE_ADMIN_APP_URL?.replace(/\/+$/, '');
+                if (adminAppUrl) {
+                    window.location.assign(`${adminAppUrl}/admin/dashboard`);
+                    return;
+                }
+
+                logout();
+                setError('This is a content manager account. Please sign in through the admin portal.');
+                return;
             }
+            navigate('/student/home');
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {

@@ -1,20 +1,13 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    Squares2X2Icon, BookOpenIcon, AcademicCapIcon,
-    QuestionMarkCircleIcon, DocumentCheckIcon, ChartBarIcon,
-    ClipboardDocumentCheckIcon, BellIcon, Cog6ToothIcon,
-    MagnifyingGlassIcon, ArrowRightOnRectangleIcon
+    ClipboardDocumentCheckIcon, DocumentTextIcon, ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { FaGraduationCap } from 'react-icons/fa';
 
 const NAV_ITEMS = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: Squares2X2Icon },
-    { name: 'Lessons', path: '/admin/courses', icon: BookOpenIcon },
-    { name: 'Question Bank', path: '/admin/question-bank', icon: AcademicCapIcon },
-    { name: 'Quizzes', path: '/admin/quizzes', icon: QuestionMarkCircleIcon },
-    { name: 'Mock Exams', path: '/admin/mock-exams', icon: DocumentCheckIcon },
-    { name: 'National Exams', path: '/admin/national-exams', icon: ClipboardDocumentCheckIcon },
+    { name: 'National Exams', path: 'national-exams', icon: ClipboardDocumentCheckIcon },
+    { name: 'Short Notes', path: 'short-notes', icon: DocumentTextIcon },
 ];
 
 const BOTTOM_NAV_ITEMS = [

@@ -5,7 +5,8 @@ import {
     getChapterDetail,
     updateChapterReadProgress,
     downloadChapterPdf,
-    createNoteChapter
+    createNoteChapter,
+    createShortNote
 } from "./controllers.js";
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
@@ -21,5 +22,6 @@ router.get("/chapters/:chapterId/download", authenticateToken, downloadChapterPd
 
 // Content Manager CRUD
 router.post("/chapters", authenticateToken, requireRole(["CONTENT_MANAGER"]), createNoteChapter);
+router.post("/chapters/:chapterId/notes", authenticateToken, requireRole(["CONTENT_MANAGER"]), createShortNote);
 
 export default router;
