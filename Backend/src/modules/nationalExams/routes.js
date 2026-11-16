@@ -5,6 +5,9 @@ import {
     getDashboardExamSimulator,
     getExamsBySubject,
     startExamAttempt,
+    retakeExamAttempt,
+    pauseExamAttempt,
+    resumeExamAttempt,
     saveExamProgress,
     submitExamAttempt,
     getExamAttemptResult,
@@ -41,6 +44,9 @@ router.get("/subjects/:subjectId/exams", authenticateToken, getExamsBySubject);
 
 // Exam taking & attempts
 router.post("/:examId/start", authenticateToken, startExamAttempt);
+router.post("/:examId/retake", authenticateToken, retakeExamAttempt);
+router.post("/attempts/:attemptId/pause", authenticateToken, pauseExamAttempt);
+router.post("/attempts/:attemptId/resume", authenticateToken, resumeExamAttempt);
 router.put("/attempts/:attemptId/save-progress", authenticateToken, saveExamProgress);
 router.post("/attempts/:attemptId/submit", authenticateToken, submitExamAttempt);
 router.get("/attempts/:attemptId", authenticateToken, getExamAttemptResult);

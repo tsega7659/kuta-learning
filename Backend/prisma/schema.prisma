@@ -296,6 +296,7 @@ enum StreamType {
 
 enum ExamAttemptStatus {
   IN_PROGRESS
+  PAUSED
   SUBMITTED
   ABANDONED
 }
@@ -387,6 +388,7 @@ model NationalExamAttempt {
   passed               Boolean              @default(false)
   timeRemainingSeconds Int?
   startedAt            DateTime             @default(now())
+  lastResumedAt        DateTime?
   submittedAt          DateTime?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt

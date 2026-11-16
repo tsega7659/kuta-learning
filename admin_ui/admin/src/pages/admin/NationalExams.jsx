@@ -185,6 +185,18 @@ export default function AdminNationalExams() {
         });
     }, [exams, selectedGrade, streamFilter]);
 
+    const examSubjectOptions = useMemo(() => {
+        const gradeLevel = Number(examForm.gradeLevel);
+        return subjects.filter(subject => {
+            if (!subject.gradeLevels?.includes(gradeLevel)) return false;
+            if (gradeLevel !== 12 || !examForm.stream) return true;
+
+            return !subject.stream
+                || subject.stream === 'COMMON'
+                || subject.stream === examForm.stream;
+        });
+    }, [subjects, examForm.gradeLevel, examForm.stream]);
+
     // ── Open Modals ──
     const handleOpenCreateSubject = () => {
         setEditingSubject(null);
@@ -1044,8 +1056,13 @@ export default function AdminNationalExams() {
                                     onChange={(e) => setExamForm({ ...examForm, subjectId: e.target.value })}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
                                 >
-                                    {subjects.map(s => (
-                                        <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
+                                    <option value="" disabled>
+                                        {examSubjectOptions.length
+                                            ? 'Select a subject'
+                                            : `No subjects created for Grade ${examForm.gradeLevel}`}
+                                    </option>
+                                    {examSubjectOptions.map(subject => (
+                                        <option key={subject.id} value={subject.id}>{subject.name}</option>
                                     ))}
                                 </select>
                             </div>

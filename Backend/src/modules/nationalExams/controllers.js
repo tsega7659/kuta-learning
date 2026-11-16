@@ -19,6 +19,21 @@ const getStudentContext = async (req) => {
     return { gradeLevel: gradeLevel || 12, stream: stream || "NATURAL" };
 };
 
+const getAttemptTimeRemaining = (attempt, now = Date.now()) => {
+    const durationSeconds = (attempt.exam?.durationMinutes || 60) * 60;
+    const timeRemainingSeconds = attempt.timeRemainingSeconds ?? durationSeconds;
+    if (attempt.status === "PAUSED") return timeRemainingSeconds;
+
+    const timerStartedAt = attempt.lastResumedAt || attempt.startedAt;
+    if (!timerStartedAt) return timeRemainingSeconds;
+
+    const elapsedSeconds = Math.max(
+        0,
+        Math.floor((now - new Date(timerStartedAt).getTime()) / 1000)
+    );
+    return timeRemainingSeconds - elapsedSeconds;
+};
+
 // ── GET /api/national-exams/subjects ──────────────────────────────────────────
 // Returns subjects with progress for the student's grade and stream
 export const getExamSubjects = async (req, res) => {
@@ -123,7 +138,7 @@ export const getDashboardExamSimulator = async (req, res) => {
         let bannerExam = null;
         if (studentId) {
             const inProgressAttempt = await prisma.nationalExamAttempt.findFirst({
-                where: { studentId, status: "IN_PROGRESS" },
+                where: { studentId, status: { in: ["IN_PROGRESS", "PAUSED"] } },
                 orderBy: { updatedAt: "desc" },
                 include: {
                     exam: {
@@ -141,9 +156,9 @@ export const getDashboardExamSimulator = async (req, res) => {
                     title: inProgressAttempt.exam.title,
                     subjectName: inProgressAttempt.exam.subject.name,
                     year: inProgressAttempt.exam.year,
-                    status: "IN_PROGRESS",
+                    status: inProgressAttempt.status,
                     action: "Resume Exam",
-                    timeRemainingSeconds: inProgressAttempt.timeRemainingSeconds,
+                    timeRemainingSeconds: Math.max(0, getAttemptTimeRemaining(inProgressAttempt)),
                 };
             } else {
                 // Find latest exam available in student's grade/stream
@@ -291,8 +306,8 @@ export const getExamsBySubject = async (req, res) => {
             let actionLabel = "Start Exam";
 
             if (latestAttempt) {
-                if (latestAttempt.status === "IN_PROGRESS") {
-                    userStatus = "IN_PROGRESS";
+                if (latestAttempt.status === "IN_PROGRESS" || latestAttempt.status === "PAUSED") {
+                    userStatus = latestAttempt.status;
                     actionLabel = "Resume";
                 } else if (latestAttempt.status === "SUBMITTED") {
                     userStatus = "SUBMITTED";
@@ -384,10 +399,11 @@ export const startExamAttempt = async (req, res) => {
             }
         }
 
-        // Check if there is an active in-progress attempt
+        // Check if there is an active attempt
         let attempt = await prisma.nationalExamAttempt.findFirst({
-            where: { studentId, examId, status: "IN_PROGRESS" },
+            where: { studentId, examId, status: { in: ["IN_PROGRESS", "PAUSED"] } },
             include: {
+                exam: { select: { durationMinutes: true } },
                 answers: {
                     select: {
                         questionId: true,
@@ -400,6 +416,24 @@ export const startExamAttempt = async (req, res) => {
         });
 
         if (!attempt) {
+            attempt = await prisma.nationalExamAttempt.findFirst({
+                where: { studentId, examId, status: "SUBMITTED" },
+                orderBy: { submittedAt: "desc" },
+                include: {
+                    exam: { select: { durationMinutes: true } },
+                    answers: {
+                        select: {
+                            questionId: true,
+                            selectedOptionId: true,
+                            textResponse: true,
+                            isFlagged: true
+                        }
+                    }
+                }
+            });
+        }
+
+        if (!attempt) {
             attempt = await prisma.nationalExamAttempt.create({
                 data: {
                     studentId,
@@ -408,6 +442,7 @@ export const startExamAttempt = async (req, res) => {
                     maxScore: exam.questions.length,
                     timeRemainingSeconds: exam.durationMinutes * 60,
                     startedAt: new Date(),
+                    lastResumedAt: new Date(),
                 },
                 include: { answers: true }
             });
@@ -416,7 +451,7 @@ export const startExamAttempt = async (req, res) => {
         res.json({
             attemptId: attempt.id,
             status: attempt.status,
-            timeRemainingSeconds: attempt.timeRemainingSeconds ?? (exam.durationMinutes * 60),
+            timeRemainingSeconds: Math.max(0, getAttemptTimeRemaining(attempt)),
             exam: {
                 id: exam.id,
                 title: exam.title,
@@ -434,6 +469,204 @@ export const startExamAttempt = async (req, res) => {
     } catch (err) {
         console.error("Error in startExamAttempt:", err);
         res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+// ── POST /api/national-exams/:examId/retake ────────────────────────────────────
+export const retakeExamAttempt = async (req, res) => {
+    const { examId } = req.params;
+    const studentId = req.user.id;
+
+    try {
+        const exam = await prisma.nationalExam.findUnique({
+            where: { id: examId },
+            include: {
+                subject: { select: { id: true, name: true, color: true } },
+                questions: {
+                    orderBy: { order: "asc" },
+                    include: {
+                        options: {
+                            orderBy: { order: "asc" },
+                            select: { id: true, text: true, imageUrl: true, order: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!exam) {
+            return res.status(404).json({ message: "National exam not found" });
+        }
+
+        if (exam.isPremium) {
+            const studentProfile = await prisma.studentProfile.findUnique({
+                where: { userId: studentId }
+            });
+            if (!studentProfile?.isPremium) {
+                return res.status(403).json({
+                    message: "This national exam is only available to Premium subscribers.",
+                    isPremiumRequired: true
+                });
+            }
+        }
+
+        const [activeAttempt, previousAttempt] = await Promise.all([
+            prisma.nationalExamAttempt.findFirst({
+                where: { studentId, examId, status: { in: ["IN_PROGRESS", "PAUSED"] } },
+                select: { id: true }
+            }),
+            prisma.nationalExamAttempt.findFirst({
+                where: { studentId, examId, status: "SUBMITTED" },
+                select: { id: true }
+            })
+        ]);
+
+        if (activeAttempt) {
+            return res.status(409).json({
+                message: "An exam attempt is already in progress.",
+                attemptId: activeAttempt.id
+            });
+        }
+        if (!previousAttempt) {
+            return res.status(400).json({ message: "Submit an attempt before requesting a retake." });
+        }
+
+        const now = new Date();
+        const attempt = await prisma.nationalExamAttempt.create({
+            data: {
+                studentId,
+                examId,
+                status: "IN_PROGRESS",
+                maxScore: exam.questions.length,
+                timeRemainingSeconds: exam.durationMinutes * 60,
+                startedAt: now,
+                lastResumedAt: now
+            }
+        });
+
+        res.status(201).json({
+            attemptId: attempt.id,
+            status: attempt.status,
+            timeRemainingSeconds: attempt.timeRemainingSeconds,
+            exam: {
+                id: exam.id,
+                title: exam.title,
+                year: exam.year,
+                gradeLevel: exam.gradeLevel,
+                stream: exam.stream,
+                durationMinutes: exam.durationMinutes,
+                passingScore: exam.passingScore,
+                subject: exam.subject,
+                totalQuestions: exam.questions.length,
+            },
+            questions: exam.questions,
+            savedAnswers: [],
+        });
+    } catch (err) {
+        console.error("Error in retakeExamAttempt:", err);
+        res.status(500).json({ message: "Server error", detail: err.message });
+    }
+};
+
+// ── POST /api/national-exams/attempts/:attemptId/pause ─────────────────────────
+export const pauseExamAttempt = async (req, res) => {
+    const { attemptId } = req.params;
+    const studentId = req.user.id;
+
+    try {
+        const attempt = await prisma.nationalExamAttempt.findUnique({
+            where: { id: attemptId },
+            include: { exam: { select: { durationMinutes: true } } }
+        });
+
+        if (!attempt || attempt.studentId !== studentId) {
+            return res.status(404).json({ message: "Attempt not found or unauthorized" });
+        }
+        if (attempt.status === "PAUSED") {
+            return res.json({
+                message: "Exam attempt is already paused",
+                attemptId,
+                status: attempt.status,
+                timeRemainingSeconds: Math.max(0, attempt.timeRemainingSeconds ?? 0)
+            });
+        }
+        if (attempt.status !== "IN_PROGRESS") {
+            return res.status(400).json({ message: "Cannot pause an exam that is not in progress" });
+        }
+
+        const remainingSeconds = getAttemptTimeRemaining(attempt);
+        if (remainingSeconds <= 0) {
+            return res.status(400).json({ message: "Exam time limit has expired.", timeExpired: true });
+        }
+
+        const pausedAttempt = await prisma.nationalExamAttempt.update({
+            where: { id: attemptId },
+            data: {
+                status: "PAUSED",
+                timeRemainingSeconds: remainingSeconds,
+                lastResumedAt: null
+            }
+        });
+
+        res.json({
+            message: "Exam attempt paused",
+            attemptId,
+            status: pausedAttempt.status,
+            timeRemainingSeconds: pausedAttempt.timeRemainingSeconds
+        });
+    } catch (err) {
+        console.error("Error in pauseExamAttempt:", err);
+        res.status(500).json({ message: "Server error pausing exam attempt" });
+    }
+};
+
+// ── POST /api/national-exams/attempts/:attemptId/resume ────────────────────────
+export const resumeExamAttempt = async (req, res) => {
+    const { attemptId } = req.params;
+    const studentId = req.user.id;
+
+    try {
+        const attempt = await prisma.nationalExamAttempt.findUnique({
+            where: { id: attemptId },
+            include: { exam: { select: { durationMinutes: true } } }
+        });
+
+        if (!attempt || attempt.studentId !== studentId) {
+            return res.status(404).json({ message: "Attempt not found or unauthorized" });
+        }
+        if (attempt.status === "IN_PROGRESS") {
+            return res.json({
+                message: "Exam attempt is already in progress",
+                attemptId,
+                status: attempt.status,
+                timeRemainingSeconds: Math.max(0, getAttemptTimeRemaining(attempt))
+            });
+        }
+        if (attempt.status !== "PAUSED") {
+            return res.status(400).json({ message: "Cannot resume an exam that is not paused" });
+        }
+        if ((attempt.timeRemainingSeconds ?? 0) <= 0) {
+            return res.status(400).json({ message: "Exam time limit has expired.", timeExpired: true });
+        }
+
+        const resumedAt = new Date();
+        const resumedAttempt = await prisma.nationalExamAttempt.update({
+            where: { id: attemptId },
+            data: {
+                status: "IN_PROGRESS",
+                lastResumedAt: resumedAt
+            }
+        });
+
+        res.json({
+            message: "Exam attempt resumed",
+            attemptId,
+            status: resumedAttempt.status,
+            timeRemainingSeconds: resumedAttempt.timeRemainingSeconds
+        });
+    } catch (err) {
+        console.error("Error in resumeExamAttempt:", err);
+        res.status(500).json({ message: "Server error resuming exam attempt" });
     }
 };
 
@@ -455,21 +688,26 @@ export const saveExamProgress = async (req, res) => {
         }
 
         if (attempt.status !== "IN_PROGRESS") {
-            return res.status(400).json({ message: "Cannot save progress for an already submitted exam" });
+            return res.status(400).json({ message: "Cannot save progress for an exam that is not in progress" });
         }
 
-        // Server-side check if time limit has expired (with 10-minute network buffer)
-        const durationMinutes = attempt.exam?.durationMinutes || 60;
-        const maxAllowedSeconds = (durationMinutes * 60) + 600;
-        if (attempt.startedAt) {
-            const elapsed = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
-            if (elapsed > maxAllowedSeconds) {
-                return res.status(400).json({
-                    message: "Exam time limit has expired.",
-                    timeExpired: true
-                });
-            }
+        const serverRemainingSeconds = getAttemptTimeRemaining(attempt);
+        if (serverRemainingSeconds < -600) {
+            return res.status(400).json({
+                message: "Exam time limit has expired.",
+                timeExpired: true
+            });
         }
+
+        let requestedRemainingSeconds = serverRemainingSeconds;
+        if (timeRemainingSeconds !== undefined) {
+            const parsedRemainingSeconds = Number(timeRemainingSeconds);
+            if (!Number.isFinite(parsedRemainingSeconds) || parsedRemainingSeconds < 0) {
+                return res.status(400).json({ message: "timeRemainingSeconds must be a non-negative number" });
+            }
+            requestedRemainingSeconds = Math.floor(parsedRemainingSeconds);
+        }
+        const savedRemainingSeconds = Math.min(requestedRemainingSeconds, serverRemainingSeconds);
 
         // Bulk upsert answers efficiently instead of sequential query loop
         if (Array.isArray(answers) && answers.length > 0) {
@@ -497,15 +735,18 @@ export const saveExamProgress = async (req, res) => {
             }
         }
 
-        // Update remaining time
-        if (timeRemainingSeconds !== undefined) {
-            await prisma.nationalExamAttempt.update({
-                where: { id: attemptId },
-                data: { timeRemainingSeconds: parseInt(timeRemainingSeconds, 10) }
-            });
-        }
+        await prisma.nationalExamAttempt.update({
+            where: { id: attemptId },
+            data: {
+                timeRemainingSeconds: savedRemainingSeconds,
+                lastResumedAt: new Date()
+            }
+        });
 
-        res.json({ message: "Progress saved successfully" });
+        res.json({
+            message: "Progress saved successfully",
+            timeRemainingSeconds: Math.max(0, savedRemainingSeconds)
+        });
     } catch (err) {
         console.error("Error in saveExamProgress:", err);
         res.status(500).json({ message: "Server error saving exam progress" });
@@ -537,8 +778,13 @@ export const submitExamAttempt = async (req, res) => {
             return res.status(404).json({ message: "Attempt not found or unauthorized" });
         }
 
-        if (attempt.status === "SUBMITTED") {
-            return res.status(400).json({ message: "Exam has already been submitted", attemptId });
+        if (attempt.status !== "IN_PROGRESS") {
+            return res.status(400).json({
+                message: attempt.status === "SUBMITTED"
+                    ? "Exam has already been submitted"
+                    : "Exam attempt is not in progress",
+                attemptId
+            });
         }
 
         const questions = attempt.exam.questions;
@@ -546,28 +792,25 @@ export const submitExamAttempt = async (req, res) => {
             return res.status(400).json({ message: "Cannot submit an exam with no questions" });
         }
 
-        // Server-Side Exam Timer Enforcement (Duration + 10-minute grace period for latency)
+        // Preserve the existing 10-minute network grace period.
         const durationMinutes = attempt.exam.durationMinutes || 60;
-        const maxAllowedSeconds = (durationMinutes * 60) + 600;
-        if (attempt.startedAt) {
-            const elapsed = Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
-            if (elapsed > maxAllowedSeconds) {
-                // Auto-close attempt
-                await prisma.nationalExamAttempt.update({
-                    where: { id: attemptId },
-                    data: {
-                        status: "SUBMITTED",
-                        timeRemainingSeconds: 0,
-                        submittedAt: new Date()
-                    }
-                });
-                return res.status(400).json({
-                    message: "Exam submission rejected: Exam time limit has expired.",
-                    timeExpired: true,
-                    allowedDurationMinutes: durationMinutes,
-                    elapsedMinutes: Math.round(elapsed / 60)
-                });
-            }
+        const remainingSeconds = getAttemptTimeRemaining(attempt);
+        if (remainingSeconds < -600) {
+            await prisma.nationalExamAttempt.update({
+                where: { id: attemptId },
+                data: {
+                    status: "SUBMITTED",
+                    timeRemainingSeconds: 0,
+                    lastResumedAt: null,
+                    submittedAt: new Date()
+                }
+            });
+            return res.status(400).json({
+                message: "Exam submission rejected: Exam time limit has expired.",
+                timeExpired: true,
+                allowedDurationMinutes: durationMinutes,
+                elapsedMinutes: Math.round((durationMinutes * 60 - remainingSeconds) / 60)
+            });
         }
 
         const maxScore = questions.length;
@@ -643,6 +886,7 @@ export const submitExamAttempt = async (req, res) => {
                     accuracyPercentage,
                     passed,
                     timeRemainingSeconds: 0,
+                    lastResumedAt: null,
                     submittedAt: new Date()
                 }
             });
@@ -731,7 +975,9 @@ export const getExamAttemptResult = async (req, res) => {
                     optionId: correctOpt?.id || null,
                     text: correctOpt?.text || null
                 },
-                wasCorrect: userAns?.isCorrect || false
+                wasCorrect: userAns?.isCorrect || false,
+                isCorrect: Boolean(userAns?.isCorrect),
+                correctOptionId: correctOpt?.id || null
             };
         });
 
@@ -1166,4 +1412,3 @@ export const deleteExamQuestion = async (req, res) => {
         res.status(500).json({ message: "Server error", detail: err.message });
     }
 };
-
