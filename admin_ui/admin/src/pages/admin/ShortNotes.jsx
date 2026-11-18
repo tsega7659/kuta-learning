@@ -4,6 +4,7 @@ import {
     BookOpenIcon,
     DocumentTextIcon,
     PlusIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { UPLOAD_LIMITS_MB, validateFileByKind } from '../../constants/uploadLimits';
@@ -25,9 +26,10 @@ const makeSubjectPayload = ({ name, description, programGrade, stream }) => ({
 });
 
 export default function AdminShortNotes() {
+    const [activeTab, setActiveTab] = useState('create');
     const [programGrade, setProgramGrade] = useState(6);
     const [stream, setStream] = useState('NATURAL');
-    const [curriculumGrade, setCurriculumGrade] = useState(9);
+    const [curriculumGrade, setCurriculumGrade] = useState(6);
     const [subjects, setSubjects] = useState([]);
     const [subjectId, setSubjectId] = useState('');
     const [chapters, setChapters] = useState([]);
@@ -54,10 +56,17 @@ export default function AdminShortNotes() {
     const [savingNote, setSavingNote] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [previewPdf, setPreviewPdf] = useState(null);
+    const [loadingPdf, setLoadingPdf] = useState(false);
 
     const curriculumGradeForApi = programGrade === 12 ? 12 : programGrade;
+    const selectedCurriculumGrade = programGrade === 12 ? curriculumGrade : programGrade;
     const selectedSubject = subjects.find((subject) => subject.id === subjectId);
     const selectedChapter = chapters.find((chapter) => chapter.id === chapterId);
+
+    useEffect(() => () => {
+        if (previewPdf?.url) URL.revokeObjectURL(previewPdf.url);
+    }, [previewPdf]);
 
     useEffect(() => {
         let current = true;
@@ -68,7 +77,9 @@ export default function AdminShortNotes() {
         })
             .then(({ data }) => {
                 if (!current) return;
-                const availableSubjects = data.subjects || [];
+                const availableSubjects = (data.subjects || []).filter((subject) =>
+                    subject.availableGrades?.includes(selectedCurriculumGrade)
+                );
                 setSubjects(availableSubjects);
                 setSubjectId((currentId) => (
                     availableSubjects.some((subject) => subject.id === currentId)
@@ -95,7 +106,7 @@ export default function AdminShortNotes() {
         return () => {
             current = false;
         };
-    }, [curriculumGradeForApi, programGrade, stream]);
+    }, [curriculumGradeForApi, programGrade, selectedCurriculumGrade, stream]);
 
     useEffect(() => {
         if (!selectedSubject) return undefined;
@@ -104,7 +115,7 @@ export default function AdminShortNotes() {
         api.get(`/short-notes/subjects/${subjectId}`, {
             params: {
                 gradeLevel: curriculumGradeForApi,
-                grade: curriculumGrade,
+                grade: selectedCurriculumGrade,
                 stream: programGrade === 12 ? stream : 'COMMON',
             },
         })
@@ -131,7 +142,7 @@ export default function AdminShortNotes() {
         return () => {
             current = false;
         };
-    }, [curriculumGrade, curriculumGradeForApi, programGrade, selectedSubject, stream, subjectId]);
+    }, [curriculumGradeForApi, programGrade, selectedCurriculumGrade, selectedSubject, stream, subjectId]);
 
     const changeProgramGrade = (event) => {
         const nextGrade = Number(event.target.value);
@@ -177,6 +188,39 @@ export default function AdminShortNotes() {
         setSuccess('');
     };
 
+    const openPdfPreview = async ({ noteId, chapterId, url }, title) => {
+        setLoadingPdf(true);
+        setError('');
+        try {
+            const filename = `${(title || 'short-note').replace(/[^\w-]/g, '_')}.pdf`;
+            const { data } = await api.get('/upload/download', {
+                params: { noteId, chapterId, url, filename, inline: 'true' },
+                responseType: 'blob',
+            });
+            const pdfHeader = await data.slice(0, 5).text();
+            if (pdfHeader !== '%PDF-') {
+                throw new Error('The uploaded file is not a valid PDF. Please upload the PDF again.');
+            }
+            setPreviewPdf({
+                title: title || 'Short-note PDF',
+                url: URL.createObjectURL(data),
+            });
+        } catch (requestError) {
+            let message = getErrorMessage(requestError, 'Could not open this PDF.');
+            if (requestError.response?.data instanceof Blob) {
+                const responseText = await requestError.response.data.text();
+                try {
+                    message = JSON.parse(responseText).message || message;
+                } catch {
+                    message = responseText || message;
+                }
+            }
+            setError(message);
+        } finally {
+            setLoadingPdf(false);
+        }
+    };
+
     const createSubject = async (event) => {
         event.preventDefault();
         if (!subjectName.trim()) {
@@ -192,7 +236,11 @@ export default function AdminShortNotes() {
                 '/national-exams/subjects',
                 makeSubjectPayload({ name: subjectName, description: subjectDescription, programGrade, stream }),
             );
-            setSubjects((currentSubjects) => [...currentSubjects, { ...data, totalChapters: 0 }]);
+            setSubjects((currentSubjects) => [...currentSubjects, {
+                ...data,
+                availableGrades: data.gradeLevels,
+                totalChapters: 0,
+            }]);
             setSubjectId(data.id);
             setChapters([]);
             setChapterId('');
@@ -224,7 +272,7 @@ export default function AdminShortNotes() {
         try {
             const { data } = await api.post('/short-notes/chapters', {
                 subjectId,
-                gradeLevel: curriculumGrade,
+                gradeLevel: selectedCurriculumGrade,
                 stream: programGrade === 12 ? stream : null,
                 title: chapterTitle.trim(),
                 description: chapterDescription.trim() || undefined,
@@ -322,8 +370,32 @@ export default function AdminShortNotes() {
             <header>
                 <p className="text-sm font-bold uppercase tracking-wider text-[#f26c24]">Content management</p>
                 <h1 className="mt-1 text-3xl font-extrabold text-[#0B3A63]">Short Notes</h1>
-                <p className="mt-2 text-gray-500">Organize student reading material by grade, stream, subject, and chapter.</p>
+                <p className="mt-2 text-gray-500">Create and browse student notes by grade, stream, subject, and chapter.</p>
             </header>
+
+            <div className="flex gap-2 border-b border-gray-200">
+                {[
+                    { id: 'create', label: 'Create Short Note' },
+                    { id: 'list', label: 'Shortnotes' },
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => {
+                            setActiveTab(tab.id);
+                            setError('');
+                            setSuccess('');
+                        }}
+                        className={`border-b-2 px-4 py-3 text-sm font-extrabold transition ${
+                            activeTab === tab.id
+                                ? 'border-[#0F4C81] text-[#0F4C81]'
+                                : 'border-transparent text-gray-500 hover:text-gray-800'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
 
             {error && (
                 <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-semibold text-red-700">
@@ -448,6 +520,7 @@ export default function AdminShortNotes() {
                 )}
             </section>
 
+            {activeTab === 'create' && (
             <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
@@ -456,7 +529,7 @@ export default function AdminShortNotes() {
                     </div>
                     {selectedSubject && (
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-[#0F4C81]">
-                            {selectedSubject.name} · Grade {curriculumGrade}
+                            {selectedSubject.name} · Grade {selectedCurriculumGrade}
                         </span>
                     )}
                 </div>
@@ -514,61 +587,11 @@ export default function AdminShortNotes() {
                         </form>
                     </>
                 )}
-            </section>
+                </section>
+            )}
 
-            {selectedChapter && (
-                <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-                    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                        <h2 className="text-lg font-extrabold text-[#0B3A63]">
-                            4. Notes in {selectedChapter.title}
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {selectedSubject?.name} · Grade {curriculumGrade}
-                            {programGrade === 12 ? ` · ${stream} Science` : ''}
-                        </p>
-
-                        {selectedChapter.content || selectedChapter.pdfUrl ? (
-                            <article className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                <p className="text-xs font-extrabold uppercase tracking-wide text-amber-800">Existing chapter material</p>
-                                {selectedChapter.content && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{selectedChapter.content}</p>}
-                                {selectedChapter.pdfUrl && (
-                                    <a className="mt-2 inline-block font-bold text-blue-700 hover:underline" href={selectedChapter.pdfUrl} target="_blank" rel="noreferrer">
-                                        View attached PDF
-                                    </a>
-                                )}
-                            </article>
-                        ) : null}
-
-                        {selectedChapter.notes?.length ? (
-                            <ol className="mt-4 space-y-3">
-                                {selectedChapter.notes.map((note, index) => (
-                                    <li key={note.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Note {index + 1}</p>
-                                                <h3 className="mt-1 font-extrabold text-gray-800">{note.title}</h3>
-                                            </div>
-                                            {note.isPremium && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Premium</span>}
-                                        </div>
-                                        {note.subtitle && <p className="mt-1 text-sm font-semibold text-gray-600">{note.subtitle}</p>}
-                                        {note.description && <p className="mt-2 text-sm text-gray-600">{note.description}</p>}
-                                        {note.content && <p className="mt-3 whitespace-pre-wrap text-sm text-gray-700">{note.content}</p>}
-                                        {note.pdfUrl && (
-                                            <a className="mt-3 inline-block font-bold text-blue-700 hover:underline" href={note.pdfUrl} target="_blank" rel="noreferrer">
-                                                View attached PDF
-                                            </a>
-                                        )}
-                                    </li>
-                                ))}
-                            </ol>
-                        ) : (
-                            !selectedChapter.content && !selectedChapter.pdfUrl && (
-                                <p className="py-8 text-center text-gray-500">No notes have been added to this chapter yet.</p>
-                            )
-                        )}
-                    </section>
-
-                    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            {activeTab === 'create' && selectedChapter && (
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                         <h2 className="text-lg font-extrabold text-[#0B3A63]">Add a short note</h2>
                         <p className="mt-1 text-sm text-gray-500">Add student-readable text, a PDF, or both to this chapter.</p>
 
@@ -649,6 +672,111 @@ export default function AdminShortNotes() {
                                 {savingNote ? 'Saving note...' : 'Add note to chapter'}
                             </button>
                         </form>
+                </section>
+            )}
+
+            {activeTab === 'list' && (
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-5">
+                        <h2 className="text-lg font-extrabold text-[#0B3A63]">Created shortnotes</h2>
+                        <p className="mt-1 text-sm text-gray-500">
+                            {selectedSubject
+                                ? `${selectedSubject.name} · Grade ${selectedCurriculumGrade}${programGrade === 12 ? ` · ${stream} stream` : ''}`
+                                : 'Choose a subject to browse its shortnotes.'}
+                        </p>
+                    </div>
+
+                    {loadingSubjects || loadingChapters ? (
+                        <p className="py-8 text-center text-sm font-semibold text-gray-500">Loading shortnotes...</p>
+                    ) : !selectedSubject ? (
+                        <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                            No subject is available for this grade and stream.
+                        </p>
+                    ) : chapters.length === 0 ? (
+                        <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                            No chapters or shortnotes have been created for this selection yet.
+                        </p>
+                    ) : chapters.every((chapter) => !chapter.notes?.length) ? (
+                        <p className="rounded-xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+                            No shortnotes have been created for this selection yet.
+                        </p>
+                    ) : (
+                        <div className="space-y-6">
+                            {chapters.filter((chapter) => chapter.notes?.length > 0).map((chapter) => (
+                                <section key={chapter.id} className="rounded-xl border border-gray-200 p-4">
+                                    <div className="mb-4 border-b border-gray-100 pb-3">
+                                        <h3 className="font-extrabold text-[#0B3A63]">{chapter.title}</h3>
+                                        {chapter.description && (
+                                            <p className="mt-1 text-sm text-gray-500">{chapter.description}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-3">
+                                        {chapter.notes.map((note) => (
+                                            <article key={note.id} className="rounded-xl bg-gray-50 p-4">
+                                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <h4 className="font-bold text-gray-800">{note.title}</h4>
+                                                            {note.isPremium && (
+                                                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                                                                    Premium
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {note.subtitle && (
+                                                            <p className="mt-1 text-sm font-semibold text-gray-600">{note.subtitle}</p>
+                                                        )}
+                                                        {note.description && (
+                                                            <p className="mt-2 whitespace-pre-wrap text-sm text-gray-600">{note.description}</p>
+                                                        )}
+                                                    </div>
+                                                    {note.pdfUrl && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openPdfPreview({ noteId: note.id, url: note.pdfUrl }, note.title)}
+                                                            disabled={loadingPdf}
+                                                            className="shrink-0 rounded-lg border border-[#0F4C81] px-3 py-2 text-sm font-bold text-[#0F4C81] hover:bg-blue-50 disabled:opacity-50"
+                                                        >
+                                                            {loadingPdf ? 'Opening PDF...' : 'View PDF'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {note.content && (
+                                                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">{note.content}</p>
+                                                )}
+                                                {!note.content && !note.pdfUrl && (
+                                                    <p className="mt-3 text-sm italic text-gray-500">This note has no text or PDF.</p>
+                                                )}
+                                            </article>
+                                        ))}
+                                    </div>
+                                </section>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
+
+            {previewPdf && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={`PDF preview: ${previewPdf.title}`}
+                        className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                    >
+                        <header className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-3">
+                            <h2 className="truncate font-extrabold text-[#0B3A63]">{previewPdf.title}</h2>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewPdf(null)}
+                                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                                aria-label="Close PDF preview"
+                            >
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        </header>
+                        <iframe title={previewPdf.title} src={previewPdf.url} className="min-h-0 w-full flex-1" />
                     </section>
                 </div>
             )}

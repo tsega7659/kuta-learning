@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import streamifier from "streamifier";
@@ -6,6 +7,7 @@ import https from "https";
 import http from "http";
 import { authenticateToken } from "../../middlewares/authenticateToken.js";
 import { requireRole } from "../../middlewares/requireRole.js";
+import { prisma } from "../../prisma.js";
 import {
     UPLOAD_LIMITS_MB,
     UPLOAD_MAX_BYTES,
@@ -53,7 +55,7 @@ const parseCloudinaryUrl = (url) => {
     const lastPart = publicIdParts[publicIdParts.length - 1];
     let format;
     const dotIdx = lastPart.lastIndexOf(".");
-    if (dotIdx !== -1) {
+    if (dotIdx !== -1 && resourceType !== "raw") {
         format = lastPart.slice(dotIdx + 1).toLowerCase();
         publicIdParts[publicIdParts.length - 1] = lastPart.slice(0, dotIdx);
     }
@@ -64,13 +66,13 @@ const parseCloudinaryUrl = (url) => {
     return { resourceType, publicId, format };
 };
 
-const pipeRemoteFile = (targetUrl, res, safeFilename) =>
+const pipeRemoteFile = (targetUrl, res, safeFilename, disposition = "attachment") =>
     new Promise((resolve, reject) => {
         const protocol = targetUrl.startsWith("https") ? https : http;
         const req = protocol.get(targetUrl, (upstream) => {
             if (upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
                 upstream.resume();
-                pipeRemoteFile(upstream.headers.location, res, safeFilename).then(resolve).catch(reject);
+                pipeRemoteFile(upstream.headers.location, res, safeFilename, disposition).then(resolve).catch(reject);
                 return;
             }
 
@@ -81,8 +83,12 @@ const pipeRemoteFile = (targetUrl, res, safeFilename) =>
             }
 
             if (!res.headersSent) {
-                res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
-                res.setHeader("Content-Type", upstream.headers["content-type"] || "application/octet-stream");
+                res.setHeader("Content-Disposition", `${disposition}; filename="${safeFilename}"`);
+                const contentType = safeFilename.toLowerCase().endsWith(".pdf")
+                    ? "application/pdf"
+                    : upstream.headers["content-type"] || "application/octet-stream";
+                res.setHeader("Content-Type", contentType);
+                res.setHeader("X-Content-Type-Options", "nosniff");
                 if (upstream.headers["content-length"]) {
                     res.setHeader("Content-Length", upstream.headers["content-length"]);
                 }
@@ -113,26 +119,69 @@ const buildSignedCloudinaryUrl = (parsed) => {
 };
 
 /**
- * GET /api/upload/download?url=<encoded_cloudinary_url>&filename=<optional_name>
- * Proxies the file download server-side to avoid CORS / 401 issues.
+ * GET /api/upload/download?url=<encoded_cloudinary_url>&filename=<optional_name>&inline=true
+ * Proxies Cloudinary files server-side to avoid CORS / 401 issues.
  */
 router.get("/download", authenticateToken, async (req, res) => {
     try {
-        const { url, filename } = req.query;
-        if (!url) {
+        const { url, filename, inline, noteId, chapterId } = req.query;
+        if (noteId && chapterId) {
+            return res.status(400).json({ message: "Specify either noteId or chapterId, not both" });
+        }
+
+        let fileUrl = url;
+        let requestedFilename = filename;
+        if (noteId || chapterId) {
+            if (req.user.role !== "CONTENT_MANAGER") {
+                return res.status(403).json({ message: "Only content managers can access stored note files this way" });
+            }
+
+            const fileRecord = noteId
+                ? await prisma.shortNote.findUnique({
+                    where: { id: noteId },
+                    select: { title: true, pdfUrl: true }
+                })
+                : await prisma.noteChapter.findUnique({
+                    where: { id: chapterId },
+                    select: { title: true, pdfUrl: true }
+                });
+            if (!fileRecord?.pdfUrl) {
+                return res.status(404).json({ message: "The requested note PDF was not found" });
+            }
+
+            fileUrl = fileRecord.pdfUrl;
+            requestedFilename = requestedFilename || `${fileRecord.title}.pdf`;
+        }
+
+        if (!fileUrl) {
             return res.status(400).json({ message: "Missing url query parameter" });
         }
 
-        if (!url.includes("cloudinary.com")) {
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(fileUrl);
+        } catch {
+            return res.status(400).json({ message: "Not a valid Cloudinary URL" });
+        }
+        if (
+            parsedUrl.protocol !== "https:"
+            || !(parsedUrl.hostname === "cloudinary.com" || parsedUrl.hostname.endsWith(".cloudinary.com"))
+        ) {
             return res.status(400).json({ message: "Not a valid Cloudinary URL" });
         }
 
-        let targetUrl = url;
+        let targetUrl = parsedUrl.toString();
         if (targetUrl.includes("/image/upload/") && !targetUrl.split("/").pop().includes(".")) {
             targetUrl = `${targetUrl}.pdf`;
         }
 
-        const safeFilename = (filename || "document.pdf").replace(/[^\w\-\.]/g, "_");
+        let safeFilename = (requestedFilename || "document.pdf").replace(/[^\w\-\.]/g, "_");
+        if ((noteId || chapterId) && !safeFilename.toLowerCase().endsWith(".pdf")) {
+            safeFilename = `${safeFilename}.pdf`;
+        }
+        const disposition = inline === "true" && safeFilename.toLowerCase().endsWith(".pdf")
+            ? "inline"
+            : "attachment";
         const parsed = parseCloudinaryUrl(targetUrl);
 
         if (!parsed) {
@@ -157,7 +206,7 @@ router.get("/download", authenticateToken, async (req, res) => {
         for (const attemptUrl of attempts) {
             try {
                 console.log(`[download] Trying: ${attemptUrl}`);
-                await pipeRemoteFile(attemptUrl, res, safeFilename);
+                await pipeRemoteFile(attemptUrl, res, safeFilename, disposition);
                 return;
             } catch (err) {
                 lastError = err;
@@ -205,6 +254,13 @@ const handleUpload = (req, res) => {
             resource_type: isDocumentType ? "raw" : "auto",
             use_filename: true,
             unique_filename: true,
+            ...(isPdf && {
+                public_id: `${originalName
+                    .split(/[\\/]/)
+                    .pop()
+                    .replace(/\.pdf$/i, '')
+                    .replace(/[^\w-]/g, '_') || 'document'}-${randomUUID()}.pdf`,
+            }),
         };
 
         // Upload to Cloudinary using upload_stream

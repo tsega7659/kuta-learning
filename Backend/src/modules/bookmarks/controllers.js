@@ -97,11 +97,7 @@ export const getBookmarks = async (req, res) => {
     }
 };
 
-/**
- * GET /api/bookmarks/check
- * Check if a specific item is bookmarked by the student.
- * Query: ?type=EXAM_QUESTION&itemId=...
- */
+
 export const checkBookmark = async (req, res) => {
     const studentId = req.user.id;
     const { type = "EXAM_QUESTION", itemId } = req.query;

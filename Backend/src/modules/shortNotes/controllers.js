@@ -69,7 +69,7 @@ export const getShortNotesSubjects = async (req, res) => {
                 gradeBadge,
                 curriculumType,
                 totalChapters,
-                availableGrades: gradeLevel === 12 ? [9, 10, 11, 12] : [gradeLevel],
+                availableGrades: sub.gradeLevels.filter(level => targetGradeLevels.includes(level)),
             };
         });
 
@@ -411,9 +411,7 @@ export const createNoteChapter = async (req, res) => {
         if (!subject) {
             return res.status(404).json({ message: "Subject not found." });
         }
-        const subjectSupportsGrade = parsedGradeLevel >= 9 && parsedGradeLevel <= 12
-            ? subject.gradeLevels.some(level => level >= 9 && level <= 12)
-            : subject.gradeLevels.includes(parsedGradeLevel);
+        const subjectSupportsGrade = subject.gradeLevels.includes(parsedGradeLevel);
         if (!subjectSupportsGrade) {
             return res.status(400).json({ message: "This subject is not available for the selected grade." });
         }

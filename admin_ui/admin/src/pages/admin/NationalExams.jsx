@@ -70,6 +70,7 @@ const DEFAULT_OPTIONS = [
 export default function AdminNationalExams() {
     const [selectedGrade, setSelectedGrade] = useState(6);
     const [streamFilter, setStreamFilter] = useState('ALL'); // For Grade 12: ALL | NATURAL | SOCIAL | COMMON
+    const [subjectFilter, setSubjectFilter] = useState('ALL');
 
     const [subjects, setSubjects] = useState([]);
     const [exams, setExams] = useState([]);
@@ -87,6 +88,13 @@ export default function AdminNationalExams() {
     const [showSubjectModal, setShowSubjectModal] = useState(false);
     const [showExamModal, setShowExamModal] = useState(false);
     const [showQuestionModal, setShowQuestionModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importCsvFile, setImportCsvFile] = useState(null);
+    const [importTitle, setImportTitle] = useState('');
+    const [importDuration, setImportDuration] = useState(120);
+    const [importingCsv, setImportingCsv] = useState(false);
+    const [importResult, setImportResult] = useState(null);
+    const [importError, setImportError] = useState('');
 
     // Editing states
     const [editingSubject, setEditingSubject] = useState(null);
@@ -115,6 +123,9 @@ export default function AdminNationalExams() {
         passingScore: 50,
         isPremium: false,
     });
+    const [showQuickSubjectForm, setShowQuickSubjectForm] = useState(false);
+    const [quickSubjectName, setQuickSubjectName] = useState('');
+    const [savingQuickSubject, setSavingQuickSubject] = useState(false);
 
     // Form states for Question (Multiple Choice A, B, C, D)
     const [questionForm, setQuestionForm] = useState({
@@ -161,6 +172,78 @@ export default function AdminNationalExams() {
         }
     };
 
+    const handleImportCsv = async (event) => {
+        event.preventDefault();
+        if (!importCsvFile) {
+            setImportError('Choose a CSV file to import.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', importTitle);
+        formData.append('durationMinutes', String(importDuration));
+        if (selectedGrade === 12 && streamFilter !== 'ALL') {
+            formData.append('stream', streamFilter);
+        }
+        formData.append('file', importCsvFile);
+        setImportingCsv(true);
+        setImportError('');
+        setImportResult(null);
+
+        const importEndpoint = `${api.defaults.baseURL}/national-exams/import`;
+        console.info('[national-exam-import] Starting CSV import', {
+            endpoint: importEndpoint,
+            filename: importCsvFile.name,
+            sizeBytes: importCsvFile.size,
+            selectedGrade,
+            stream: selectedGrade === 12 ? streamFilter : null,
+        });
+
+        try {
+            const response = await api.post('/national-exams/import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            const { data } = response;
+            console.info('[national-exam-import] Import response', {
+                endpoint: importEndpoint,
+                status: response.status,
+                success: data.success,
+                totalRowsProcessed: data.totalRowsProcessed,
+                insertedQuestions: data.insertedQuestions,
+                exams: (data.exams || (data.exam ? [data.exam] : [])).map(({ year, title }) => ({ year, title })),
+                validationErrorCount: data.validationErrors?.length || 0,
+            });
+            setImportResult(data);
+            if (data.exams?.some((exam) => exam.gradeLevel === selectedGrade)
+                || data.exam?.gradeLevel === selectedGrade) {
+                await fetchData();
+            }
+        } catch (requestError) {
+            const response = requestError.response?.data;
+            console.error('[national-exam-import] Import request failed', {
+                endpoint: importEndpoint,
+                status: requestError.response?.status || null,
+                message: response?.message || response?.detail || requestError.message,
+                responseData: typeof response === 'string' ? response.slice(0, 300) : undefined,
+            });
+            if (response?.totalRowsProcessed !== undefined) {
+                setImportResult(response);
+            } else {
+                const serverMessage = response?.message || response?.detail;
+                const status = requestError.response?.status;
+                setImportError(
+                    serverMessage
+                        ? `${serverMessage}${status ? ` (HTTP ${status})` : ''}`
+                        : status
+                            ? `Could not import this CSV file (HTTP ${status}).`
+                            : 'Could not import this CSV file.'
+                );
+            }
+        } finally {
+            setImportingCsv(false);
+        }
+    };
+
     const fetchPreviewQuestions = async (examId) => {
         setLoadingPreview(true);
         try {
@@ -176,6 +259,7 @@ export default function AdminNationalExams() {
     // Filtered exams list by Stream (for Grade 12)
     const filteredExams = useMemo(() => {
         return exams.filter(e => {
+            if (subjectFilter !== 'ALL' && e.subjectId !== subjectFilter) return false;
             if (selectedGrade === 12 && streamFilter !== 'ALL') {
                 if (streamFilter === 'NATURAL' && e.stream !== 'NATURAL' && e.stream !== 'COMMON') return false;
                 if (streamFilter === 'SOCIAL' && e.stream !== 'SOCIAL' && e.stream !== 'COMMON') return false;
@@ -183,7 +267,7 @@ export default function AdminNationalExams() {
             }
             return true;
         });
-    }, [exams, selectedGrade, streamFilter]);
+    }, [exams, selectedGrade, streamFilter, subjectFilter]);
 
     const examSubjectOptions = useMemo(() => {
         const gradeLevel = Number(examForm.gradeLevel);
@@ -197,6 +281,16 @@ export default function AdminNationalExams() {
         });
     }, [subjects, examForm.gradeLevel, examForm.stream]);
 
+    const creationSubjectOptions = useMemo(() => {
+        const stream = selectedGrade === 12
+            ? (streamFilter === 'ALL' ? 'NATURAL' : streamFilter)
+            : '';
+        return subjects.filter(subject => (
+            subject.gradeLevels?.includes(selectedGrade)
+            && (selectedGrade !== 12 || !subject.stream || subject.stream === 'COMMON' || subject.stream === stream)
+        ));
+    }, [subjects, selectedGrade, streamFilter]);
+
     // ── Open Modals ──
     const handleOpenCreateSubject = () => {
         setEditingSubject(null);
@@ -204,7 +298,9 @@ export default function AdminNationalExams() {
             name: '',
             code: '',
             gradeLevels: [selectedGrade],
-            stream: selectedGrade === 12 ? 'NATURAL' : '',
+            stream: selectedGrade === 12
+                ? (streamFilter === 'ALL' ? 'NATURAL' : streamFilter)
+                : '',
             description: '',
             icon: '📚',
             color: '#0F4C81'
@@ -214,18 +310,48 @@ export default function AdminNationalExams() {
 
     const handleOpenCreateExam = () => {
         setEditingExam(null);
-        const firstSub = subjects.length > 0 ? subjects[0].id : '';
+        setShowQuickSubjectForm(false);
+        setQuickSubjectName('');
+        const stream = selectedGrade === 12
+            ? (streamFilter === 'ALL' ? 'NATURAL' : streamFilter)
+            : '';
         setExamForm({
-            subjectId: firstSub,
-            title: `${new Date().getFullYear()} Grade ${selectedGrade} National Exam`,
+            subjectId: '',
+            title: '',
             year: new Date().getFullYear(),
             gradeLevel: selectedGrade,
-            stream: selectedGrade === 12 ? (streamFilter !== 'ALL' ? streamFilter : 'NATURAL') : '',
+            stream,
             durationMinutes: 120,
             passingScore: 50,
             isPremium: false,
         });
         setShowExamModal(true);
+    };
+
+    const handleQuickCreateSubject = async (e) => {
+        e?.preventDefault();
+        const name = quickSubjectName.trim();
+        if (!name) return;
+
+        setSavingQuickSubject(true);
+        try {
+            const response = await api.post('/national-exams/subjects', {
+                name,
+                gradeLevels: [Number(examForm.gradeLevel)],
+                stream: Number(examForm.gradeLevel) === 12 ? examForm.stream : '',
+                icon: '📚',
+                color: '#0F4C81'
+            });
+            const createdSubject = response.data;
+            setSubjects(prev => [...prev, createdSubject]);
+            setExamForm(prev => ({ ...prev, subjectId: createdSubject.id }));
+            setQuickSubjectName('');
+            setShowQuickSubjectForm(false);
+        } catch (err) {
+            alert('Error adding subject: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setSavingQuickSubject(false);
+        }
     };
 
     const handleOpenEditExam = (exam) => {
@@ -298,13 +424,17 @@ export default function AdminNationalExams() {
         e.preventDefault();
         setSubmitting(true);
         try {
+            const subjectPayload = {
+                ...subjectForm,
+                gradeLevels: [Number(selectedGrade)]
+            };
             if (editingSubject) {
-                await api.put(`/national-exams/admin/subjects/${editingSubject.id}`, subjectForm);
+                await api.put(`/national-exams/admin/subjects/${editingSubject.id}`, subjectPayload);
             } else {
-                await api.post('/national-exams/subjects', subjectForm);
+                await api.post('/national-exams/subjects', subjectPayload);
             }
             setShowSubjectModal(false);
-            fetchData();
+            await fetchData();
         } catch (err) {
             alert('Error saving subject: ' + (err.response?.data?.message || err.message));
         } finally {
@@ -323,7 +453,7 @@ export default function AdminNationalExams() {
                 await api.post('/national-exams/exams', examForm);
             }
             setShowExamModal(false);
-            fetchData();
+            await fetchData();
         } catch (err) {
             alert('Error saving exam: ' + (err.response?.data?.message || err.message));
         } finally {
@@ -495,21 +625,6 @@ export default function AdminNationalExams() {
                         <ArrowPathIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </button>
-                    <button
-                        onClick={handleOpenCreateSubject}
-                        className="px-4 py-2.5 bg-white border border-[#0F4C81] text-[#0F4C81] font-extrabold text-xs rounded-xl hover:bg-blue-50 flex items-center gap-2 transition shadow-xs"
-                    >
-                        <PlusCircleIcon className="w-4 h-4" />
-                        + Add Subject
-                    </button>
-                    <button
-                        onClick={handleOpenCreateExam}
-                        disabled={subjects.length === 0}
-                        className="px-5 py-2.5 bg-[#F26522] hover:bg-orange-600 text-white font-black text-xs rounded-xl flex items-center gap-2 transition shadow-md shadow-orange-500/20 disabled:opacity-50"
-                    >
-                        <PlusCircleIcon className="w-4 h-4" />
-                        + Create National Exam
-                    </button>
                 </div>
             </div>
 
@@ -526,7 +641,8 @@ export default function AdminNationalExams() {
                                 type="button"
                                 onClick={() => {
                                     setSelectedGrade(grade);
-                                    setStreamFilter('ALL');
+                                    setStreamFilter(grade === 12 ? 'NATURAL' : 'ALL');
+                                    setSubjectFilter('ALL');
                                 }}
                                 className={`text-left p-4 rounded-xl border transition-all relative ${
                                     isSelected
@@ -558,6 +674,67 @@ export default function AdminNationalExams() {
                 </div>
             </div>
 
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-gray-200">
+                <div className="flex flex-wrap items-center gap-2">
+                    {selectedGrade === 12 && (
+                        <>
+                            <span className="text-xs font-black text-gray-500 uppercase tracking-wider">Select Stream:</span>
+                            {['NATURAL', 'SOCIAL', 'COMMON'].map(stream => (
+                                <button
+                                    key={stream}
+                                    type="button"
+                                    onClick={() => {
+                                        setStreamFilter(stream);
+                                        setSubjectFilter('ALL');
+                                    }}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
+                                        streamFilter === stream
+                                            ? 'bg-[#0F4C81] text-white shadow-xs'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {stream === 'NATURAL' ? 'Natural Science' : stream === 'SOCIAL' ? 'Social Science' : 'Common'}
+                                </button>
+                            ))}
+                        </>
+                    )}
+                    <label className="flex items-center gap-2 text-xs font-black text-gray-500">
+                        Filter Subject:
+                        <select
+                            value={subjectFilter}
+                            onChange={(e) => setSubjectFilter(e.target.value)}
+                            className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 font-bold focus:border-[#0F4C81] focus:outline-none"
+                        >
+                            <option value="ALL">All Subjects</option>
+                            {creationSubjectOptions.map(subject => (
+                                <option key={subject.id} value={subject.id}>{subject.name}</option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setImportError('');
+                            setImportResult(null);
+                            setShowImportModal(true);
+                        }}
+                        className="px-4 py-2.5 bg-white border border-[#0F4C81] text-[#0F4C81] font-black text-xs rounded-xl flex items-center justify-center gap-2 transition hover:bg-blue-50"
+                    >
+                        <DocumentTextIcon className="w-4 h-4" />
+                        Import CSV
+                    </button>
+                    <button
+                        onClick={handleOpenCreateExam}
+                        className="px-5 py-2.5 bg-[#F26522] hover:bg-orange-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-md shadow-orange-500/20"
+                    >
+                        <PlusCircleIcon className="w-4 h-4" />
+                        Create National Exam
+                    </button>
+                </div>
+            </div>
+
             {/* ── Language Guidelines Banner ── */}
             <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-orange-50/60 p-4 rounded-2xl border border-blue-100 flex items-start gap-3">
                 <InformationCircleIcon className="w-5 h-5 text-[#0F4C81] shrink-0 mt-0.5" />
@@ -573,26 +750,6 @@ export default function AdminNationalExams() {
             </div>
 
             {/* ── Stream Filter for Grade 12 ── */}
-            {selectedGrade === 12 && (
-                <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-xl border border-gray-200">
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-wider mr-2">Filter Stream:</span>
-                    {['ALL', 'NATURAL', 'SOCIAL', 'COMMON'].map(stream => (
-                        <button
-                            key={stream}
-                            type="button"
-                            onClick={() => setStreamFilter(stream)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
-                                streamFilter === stream
-                                    ? 'bg-[#0F4C81] text-white shadow-xs'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                        >
-                            {stream === 'ALL' ? 'All Streams' : `${stream} Stream`}
-                        </button>
-                    ))}
-                </div>
-            )}
-
             {/* ── National Exams List ── */}
             {loading ? (
                 <div className="bg-white rounded-2xl p-16 text-center border border-gray-200">
@@ -604,27 +761,17 @@ export default function AdminNationalExams() {
                     <AcademicCapIcon className="w-16 h-16 text-gray-300 mx-auto mb-3" />
                     <h3 className="text-lg font-black text-[#0B3A63] mb-1">No National Exams Created Yet</h3>
                     <p className="text-xs font-bold text-gray-400 max-w-md mx-auto mb-6">
-                        {subjects.length === 0
-                            ? `No subjects configured for Grade ${selectedGrade}. Add a subject first (e.g. Mathematics, English) to begin.`
+                        {creationSubjectOptions.length === 0
+                            ? `Create the exam now and add its subject from the subject selector.`
                             : `Create your first national exam paper to begin inserting multiple-choice questions.`}
                     </p>
-                    {subjects.length === 0 ? (
-                        <button
-                            onClick={handleOpenCreateSubject}
-                            className="px-5 py-3 bg-[#0F4C81] text-white font-black text-xs rounded-xl inline-flex items-center gap-2 hover:bg-[#0B3A63] transition shadow-md"
-                        >
-                            <PlusCircleIcon className="w-4 h-4" />
-                            Add Subject for Grade {selectedGrade}
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleOpenCreateExam}
-                            className="px-5 py-3 bg-[#F26522] text-white font-black text-xs rounded-xl inline-flex items-center gap-2 hover:bg-orange-600 transition shadow-md shadow-orange-500/20"
-                        >
-                            <PlusCircleIcon className="w-4 h-4" />
-                            Create National Exam
-                        </button>
-                    )}
+                    <button
+                        onClick={handleOpenCreateExam}
+                        className="px-5 py-3 bg-[#F26522] text-white font-black text-xs rounded-xl inline-flex items-center gap-2 hover:bg-orange-600 transition shadow-md shadow-orange-500/20"
+                    >
+                        <PlusCircleIcon className="w-4 h-4" />
+                        Create National Exam
+                    </button>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -637,7 +784,6 @@ export default function AdminNationalExams() {
                                 {/* Card Header: Subject & Year */}
                                 <div className="flex items-center justify-between gap-2 mb-3">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xl">{exam.subject?.icon || '📚'}</span>
                                         <span
                                             className="text-xs font-black px-2 py-0.5 rounded-md text-white"
                                             style={{ backgroundColor: exam.subject?.color || '#0F4C81' }}
@@ -728,7 +874,6 @@ export default function AdminNationalExams() {
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50 shrink-0">
                             <div className="flex items-center gap-3">
-                                <span className="text-2xl">{previewExam.subject?.icon || '📚'}</span>
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h2 className="text-lg font-black text-[#0B3A63] leading-tight">
@@ -1049,22 +1194,17 @@ export default function AdminNationalExams() {
 
                         <form onSubmit={handleSaveExam} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-extrabold text-gray-700 mb-1">Select Subject</label>
-                                <select
-                                    required
-                                    value={examForm.subjectId}
-                                    onChange={(e) => setExamForm({ ...examForm, subjectId: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
-                                >
-                                    <option value="" disabled>
-                                        {examSubjectOptions.length
-                                            ? 'Select a subject'
-                                            : `No subjects created for Grade ${examForm.gradeLevel}`}
-                                    </option>
-                                    {examSubjectOptions.map(subject => (
-                                        <option key={subject.id} value={subject.id}>{subject.name}</option>
-                                    ))}
-                                </select>
+                                <span className="block text-xs font-extrabold text-gray-700 mb-1">Exam for</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-3 py-1.5 rounded-lg bg-blue-50 text-[#0F4C81] text-xs font-black">
+                                        Grade {examForm.gradeLevel}
+                                    </span>
+                                    {Number(examForm.gradeLevel) === 12 && (
+                                        <span className="px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 text-xs font-black">
+                                            {examForm.stream || 'COMMON'} Stream
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div>
@@ -1074,7 +1214,11 @@ export default function AdminNationalExams() {
                                     required
                                     value={examForm.title}
                                     onChange={(e) => setExamForm({ ...examForm, title: e.target.value })}
-                                    placeholder={selectedGrade === 6 ? 'e.g. የ2016 ዓ.ም የ6ኛ ክፍል የክልል ፈተና' : 'e.g. 2024 Grade 12 National Exam'}
+                                    placeholder={Number(examForm.gradeLevel) === 6
+                                        ? 'e.g. 2022 English Exam for Grade 6'
+                                        : Number(examForm.gradeLevel) === 8
+                                            ? 'e.g. 2022 Mathematics Exam for Grade 8'
+                                            : `e.g. 2022 Physics Exam for Grade 12 ${examForm.stream || 'NATURAL'} Stream`}
                                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
                                 />
                             </div>
@@ -1090,40 +1234,85 @@ export default function AdminNationalExams() {
                                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
                                     />
                                 </div>
-
-                                {selectedGrade === 12 && (
-                                    <div>
-                                        <label className="block text-xs font-extrabold text-gray-700 mb-1">Stream</label>
-                                        <select
-                                            value={examForm.stream}
-                                            onChange={(e) => setExamForm({ ...examForm, stream: e.target.value })}
-                                            className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
-                                        >
-                                            <option value="">None (Common)</option>
-                                            <option value="NATURAL">Natural Science</option>
-                                            <option value="SOCIAL">Social Science</option>
-                                            <option value="COMMON">Common</option>
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-extrabold text-gray-700 mb-1">Duration (Minutes)</label>
+                                    <label className="block text-xs font-extrabold text-gray-700 mb-1">Allowed Time (Minutes)</label>
                                     <input
                                         type="number"
                                         required
+                                        min="1"
                                         value={examForm.durationMinutes}
                                         onChange={(e) => setExamForm({ ...examForm, durationMinutes: e.target.value })}
                                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-extrabold text-gray-700 mb-1">Subject</label>
+                                <select
+                                    required
+                                    value={examForm.subjectId}
+                                    onChange={(e) => setExamForm({ ...examForm, subjectId: e.target.value })}
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
+                                >
+                                    <option value="" disabled>
+                                        {examSubjectOptions.length
+                                            ? 'Select a subject'
+                                            : 'No subjects available yet'}
+                                    </option>
+                                    {examSubjectOptions.map(subject => (
+                                        <option key={subject.id} value={subject.id}>{subject.name}</option>
+                                    ))}
+                                </select>
+                                {showQuickSubjectForm ? (
+                                    <div className="mt-2 flex gap-2">
+                                        <input
+                                            type="text"
+                                            autoFocus
+                                            value={quickSubjectName}
+                                            onChange={(e) => setQuickSubjectName(e.target.value)}
+                                            placeholder="New subject name"
+                                            className="min-w-0 flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleQuickCreateSubject}
+                                            disabled={savingQuickSubject || !quickSubjectName.trim()}
+                                            className="px-3 py-2 rounded-lg bg-[#0F4C81] text-white text-xs font-extrabold disabled:opacity-50"
+                                        >
+                                            {savingQuickSubject ? 'Adding...' : 'Add Subject'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={savingQuickSubject}
+                                            onClick={() => {
+                                                setShowQuickSubjectForm(false);
+                                                setQuickSubjectName('');
+                                            }}
+                                            className="px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-xs font-extrabold disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowQuickSubjectForm(true)}
+                                        className="mt-2 text-xs font-extrabold text-[#0F4C81] hover:underline"
+                                    >
+                                        {examSubjectOptions.length ? '+ Add a new subject' : '+ Create the first subject'}
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-extrabold text-gray-700 mb-1">Passing Score (%)</label>
                                     <input
                                         type="number"
                                         required
+                                        min="0"
+                                        max="100"
                                         value={examForm.passingScore}
                                         onChange={(e) => setExamForm({ ...examForm, passingScore: e.target.value })}
                                         className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
@@ -1444,6 +1633,148 @@ export default function AdminNationalExams() {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {showImportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="national-exam-import-title"
+                        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+                    >
+                        <div className="mb-5 flex items-center justify-between border-b border-gray-200 pb-3">
+                            <div>
+                                <h2 id="national-exam-import-title" className="text-lg font-black text-[#0B3A63]">
+                                    Bulk import national exam
+                                </h2>
+                                <p className="mt-1 text-xs font-semibold text-gray-500">
+                                    Import a CSV containing questions for one subject and grade. Rows are grouped into separate exams by year.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowImportModal(false)}
+                                disabled={importingCsv}
+                                className="rounded-lg p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                                aria-label="Close CSV import"
+                            >
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleImportCsv} className="space-y-4">
+                            <label className="block text-xs font-extrabold text-gray-700">
+                                CSV file
+                                <input
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    required
+                                    onChange={(event) => {
+                                        setImportCsvFile(event.target.files?.[0] || null);
+                                        setImportResult(null);
+                                        setImportError('');
+                                    }}
+                                    className="mt-2 block w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-bold file:text-blue-700"
+                                />
+                                <span className="mt-1 block font-medium text-gray-400">CSV files up to 10 MB.</span>
+                            </label>
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <label className="block text-xs font-extrabold text-gray-700">
+                                    Exam title <span className="font-medium text-gray-400">(optional)</span>
+                                    <input
+                                        type="text"
+                                        maxLength={180}
+                                        value={importTitle}
+                                        onChange={(event) => setImportTitle(event.target.value)}
+                                        placeholder="Generated from subject, grade, and each year if blank"
+                                        className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
+                                    />
+                                </label>
+                                <label className="block text-xs font-extrabold text-gray-700">
+                                    Allowed time (minutes)
+                                    <input
+                                        type="number"
+                                        required
+                                        min="1"
+                                        max="600"
+                                        value={importDuration}
+                                        onChange={(event) => setImportDuration(event.target.value)}
+                                        className="mt-2 w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm font-bold focus:border-[#0F4C81] focus:outline-none"
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                                <p className="mb-2 text-xs font-extrabold text-[#0B3A63]">CSV header and example row</p>
+                                <pre className="overflow-x-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-gray-700">{`year,subject,grade,question_text,option_a,option_b,option_c,option_d,correct_answer,explanation,image_url
+2020,History,12,What happened at Adwa in 1896?,Ethiopian victory,League founded,War ended,Canal opened,A,Ethiopia defeated the Italian invasion at Adwa.,`}</pre>
+                                <p className="mt-2 text-[11px] font-medium text-gray-500">
+                                    Every row must use the same subject and grade. Rows with different years create separate exam cards. Subject must match a subject configured for that grade.
+                                </p>
+                            </div>
+
+                            {importError && (
+                                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                                    {importError}
+                                </div>
+                            )}
+
+                            {importResult && (
+                                <div
+                                    role={importResult.success ? 'status' : 'alert'}
+                                    className={`space-y-2 rounded-xl border p-3 ${
+                                        importResult.success
+                                            ? 'border-green-200 bg-green-50 text-green-800'
+                                            : 'border-amber-200 bg-amber-50 text-amber-900'
+                                    }`}
+                                >
+                                    <p className="text-sm font-extrabold">
+                                        {importResult.message || 'Import processed.'}
+                                    </p>
+                                    <p className="text-xs font-semibold">
+                                        Processed {importResult.totalRowsProcessed} row(s); inserted {importResult.insertedQuestions} question(s).
+                                    </p>
+                                    {(importResult.exams?.length > 0 || importResult.exam) && (
+                                        <ul className="list-disc pl-5 text-xs">
+                                            {(importResult.exams || [importResult.exam]).map((exam) => (
+                                                <li key={exam.id}>{exam.year}: {exam.title}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    {importResult.validationErrors?.length > 0 && (
+                                        <ul className="max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-xs">
+                                            {importResult.validationErrors.map((rowError, index) => (
+                                                <li key={`${rowError.row}-${index}`}>
+                                                    Row {rowError.row}: {rowError.errors.map((item) => `${item.field}: ${item.message}`).join('; ')}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowImportModal(false)}
+                                    disabled={importingCsv}
+                                    className="rounded-xl px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={importingCsv || !importCsvFile}
+                                    className="rounded-xl bg-[#0F4C81] px-5 py-2 text-xs font-extrabold text-white hover:bg-[#0B3A63] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {importingCsv ? 'Importing questions...' : 'Import CSV'}
+                                </button>
+                            </div>
+                        </form>
+                    </section>
                 </div>
             )}
         </div>

@@ -25,6 +25,31 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 
+const nationalExamImportPaths = new Set([
+    "/api/national-exams/import",
+    "/api/v1/exams/import",
+]);
+
+app.use((req, res, next) => {
+    if (req.method === "POST" && nationalExamImportPaths.has(req.path)) {
+        console.info("[national-exam-import] Request reached backend", {
+            method: req.method,
+            path: req.originalUrl,
+            origin: req.get("origin") || null,
+            contentType: req.get("content-type") || null,
+            contentLength: req.get("content-length") || null,
+        });
+        res.on("finish", () => {
+            console.info("[national-exam-import] Backend response sent", {
+                method: req.method,
+                path: req.originalUrl,
+                status: res.statusCode,
+            });
+        });
+    }
+    next();
+});
+
 // Simple health‑check
 app.get("/", (req, res) => res.send("🚀 Backend is alive"));
 
@@ -38,6 +63,7 @@ import uploadRoutes from "./modules/upload/routes.js";
 import quizFlatRoutes from "./modules/quizzes/flatRoutes.js";
 import practiceRoutes from "./modules/practice/routes.js";
 import nationalExamRoutes from "./modules/nationalExams/routes.js";
+import nationalExamImportRoutes from "./modules/nationalExams/importRoutes.js";
 import shortNotesRoutes from "./modules/shortNotes/routes.js";
 import bookmarkRoutes from "./modules/bookmarks/routes.js";
 import { getAttempt } from "./modules/quizzes/controllers.js";
@@ -55,9 +81,21 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/quizzes", quizFlatRoutes);
 app.use("/api/practice", practiceRoutes);
 app.use("/api/national-exams", nationalExamRoutes);
+app.use("/api/national-exams", nationalExamImportRoutes);
+app.use("/api/v1/exams", nationalExamImportRoutes);
 app.use("/api/short-notes", shortNotesRoutes);
 app.use("/api/bookmarks", bookmarkRoutes);
 app.get("/api/quiz-attempts/:id", authenticateToken, getAttempt);
 // ---------------------------------------------------------------------
+
+app.use((req, res, next) => {
+    if (req.method === "POST" && nationalExamImportPaths.has(req.path)) {
+        console.error("[national-exam-import] No import route matched the request", {
+            method: req.method,
+            path: req.originalUrl,
+        });
+    }
+    next();
+});
 
 export default app;

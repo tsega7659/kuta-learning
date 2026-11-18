@@ -1,0 +1,11 @@
+year,subject,grade,question_text,option_a,option_b,option_c,option_d,correct_answer,explanation,image_url
+2026,English,6,"Which word is a noun?","Run","Blue","City","Quickly",C,"A noun names a person, place, or thing.",""
+2026,English,6,"Choose the past tense of ""go.""","Goed","Went","Gone","Going",B,"The irregular past tense of ""go"" is ""went.""",""
+2026,English,6,"Which sentence is a question?","You are ready.","Are you ready?","Please sit down.","It is raining.",B,"Questions ask for information and usually end with a question mark.",""
+2026,English,6,"What is the opposite of ""hot""?","Warm","Cold","Sunny","Hard",B,"Cold is the opposite of hot.",""
+2026,English,6,"Which word describes a noun?","Quickly","Beauty","Beautiful","Run",C,"Beautiful is an adjective that describes a noun.",""
+2026,English,6,"Choose the correctly spelled word.","Recieve","Receive","Receeve","Reiceve",B,"Receive is spelled r-e-c-e-i-v-e.",""
+2026,English,6,"Which word is a verb?","Table","Jump","Happy","Green",B,"A verb expresses an action; jump is an action.",""
+2026,English,6,"How many letters are in the word ""school""?","5","6","7","8",B,"The word school contains six letters.",""
+2026,English,6,"Which punctuation mark ends an ordinary statement?","Comma","Question mark","Full stop","Exclamation mark",C,"A full stop ends an ordinary statement.",""
+2026,English,6,"Choose the plural of ""child.""","Childs","Childes","Children","Childern",C,"The irregular plural of child is children.",""

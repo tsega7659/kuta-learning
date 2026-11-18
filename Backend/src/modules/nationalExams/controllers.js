@@ -1044,11 +1044,14 @@ export const getAdminSubjects = async (req, res) => {
 
 export const createExamSubject = async (req, res) => {
     const { name, code, gradeLevels, stream, description, subcategories, icon, color, order } = req.body;
-    try {
-        const parsedGradeLevels = Array.isArray(gradeLevels)
-            ? gradeLevels.map(g => parseInt(g, 10))
-            : [12];
+    const parsedGradeLevels = Array.isArray(gradeLevels)
+        ? gradeLevels.map(g => parseInt(g, 10))
+        : [];
+    if (parsedGradeLevels.length === 0 || parsedGradeLevels.some(g => !Number.isInteger(g))) {
+        return res.status(400).json({ message: "At least one valid grade level is required" });
+    }
 
+    try {
         const subject = await prisma.examSubject.create({
             data: {
                 name,
