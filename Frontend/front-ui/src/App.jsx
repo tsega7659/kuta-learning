@@ -21,6 +21,7 @@ import ParentSettings from './pages/student/ParentSettings';
 import PracticeMenu from './pages/student/PracticeMenu';
 import PracticeSession from './pages/student/PracticeSession';
 import PracticeResult from './pages/student/PracticeResult';
+import ShortNotes from './pages/student/ShortNotes';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
               <Route path="home" element={<HomeDashboard />} />
               <Route path="courses" element={<CourseList />} />
               <Route path="courses/:id" element={<CourseDetail />} />
+              <Route path="short-notes" element={<ShortNotes />} />
               <Route path="lessons/:id" element={<LessonView />} />
               <Route path="quiz/result/:attemptId" element={<QuizResult />} />
               <Route path="quiz/:quizId" element={<QuizPage />} />

@@ -3,11 +3,13 @@ import {
     ArrowPathIcon,
     BookOpenIcon,
     DocumentTextIcon,
+    PhotoIcon,
     PlusIcon,
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../services/api';
 import { UPLOAD_LIMITS_MB, validateFileByKind } from '../../constants/uploadLimits';
+import RichNoteContent from '../../components/RichNoteContent';
 
 const PROGRAM_GRADES = [6, 8, 12];
 const HIGH_SCHOOL_GRADES = [9, 10, 11, 12];
@@ -49,7 +51,11 @@ export default function AdminShortNotes() {
     const [noteContent, setNoteContent] = useState('');
     const [objectivesText, setObjectivesText] = useState('');
     const pdfInputRef = useRef(null);
+    const imageInputRef = useRef(null);
+    const noteContentRef = useRef(null);
+    const imageCursorRef = useRef({ start: 0, end: 0 });
     const [pdfFile, setPdfFile] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [isPremium, setIsPremium] = useState(false);
     const [savingSubject, setSavingSubject] = useState(false);
     const [savingChapter, setSavingChapter] = useState(false);
@@ -221,6 +227,72 @@ export default function AdminShortNotes() {
         }
     };
 
+    const selectImageInsertionPoint = () => {
+        const textarea = noteContentRef.current;
+        imageCursorRef.current = textarea
+            ? { start: textarea.selectionStart, end: textarea.selectionEnd }
+            : { start: noteContent.length, end: noteContent.length };
+        imageInputRef.current?.click();
+    };
+
+    const uploadNoteImage = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        const supportedImageTypes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+        if (!supportedImageTypes.has(file.type.toLowerCase())) {
+            setError('Choose a JPG, PNG, GIF, or WebP image.');
+            return;
+        }
+        const fileError = validateFileByKind(file);
+        if (fileError) {
+            setError(fileError);
+            return;
+        }
+
+        setError('');
+        setSuccess('');
+        setUploadingImage(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const { data } = await api.post('/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            const imageUrl = new URL(data.url);
+            if (imageUrl.protocol !== 'https:' || imageUrl.hostname !== 'res.cloudinary.com') {
+                throw new Error('The image upload returned an unsupported image URL.');
+            }
+
+            const { start, end } = imageCursorRef.current;
+            const alt = file.name
+                .replace(/\.[^.]+$/, '')
+                .split('[').join('')
+                .split(']').join('')
+                .split('\\').join('')
+                .trim() || 'Note image';
+            const markdownUrl = imageUrl.toString().replace(/[()]/g, (character) => encodeURIComponent(character));
+            const marker = `![${alt}](${markdownUrl})`;
+            const before = noteContent.slice(0, start);
+            const after = noteContent.slice(end);
+            const insertion = `${before && !before.endsWith('\n') ? '\n' : ''}${marker}${after && !after.startsWith('\n') ? '\n' : '\n'}`;
+            const updatedContent = `${before}${insertion}${after}`;
+            setNoteContent(updatedContent);
+            window.setTimeout(() => {
+                const textarea = noteContentRef.current;
+                if (!textarea) return;
+                const cursor = before.length + insertion.length;
+                textarea.focus();
+                textarea.setSelectionRange(cursor, cursor);
+            }, 0);
+        } catch (requestError) {
+            setError(getErrorMessage(requestError, 'Could not upload this image.'));
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     const createSubject = async (event) => {
         event.preventDefault();
         if (!subjectName.trim()) {
@@ -303,7 +375,7 @@ export default function AdminShortNotes() {
             return;
         }
         if (!noteContent.trim() && !pdfFile) {
-            setError('Enter note text, attach a PDF, or provide both.');
+            setError('Enter note text, insert an image, attach a PDF, or provide a combination.');
             return;
         }
         if (pdfFile) {
@@ -593,7 +665,7 @@ export default function AdminShortNotes() {
             {activeTab === 'create' && selectedChapter && (
                 <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                         <h2 className="text-lg font-extrabold text-[#0B3A63]">Add a short note</h2>
-                        <p className="mt-1 text-sm text-gray-500">Add student-readable text, a PDF, or both to this chapter.</p>
+                        <p className="mt-1 text-sm text-gray-500">Add student-readable text, images, a PDF, or a combination to this chapter.</p>
 
                         <form onSubmit={createNote} className="mt-5 space-y-4">
                             <label className="block text-sm font-bold text-gray-600">
@@ -625,14 +697,37 @@ export default function AdminShortNotes() {
                                 />
                             </label>
                             <label className="block text-sm font-bold text-gray-600">
-                                Note text <span className="font-normal text-gray-400">(optional with PDF)</span>
+                                Note text and images <span className="font-normal text-gray-400">(optional with PDF)</span>
                                 <textarea
+                                    ref={noteContentRef}
                                     value={noteContent}
                                     onChange={(event) => setNoteContent(event.target.value)}
+                                    disabled={uploadingImage}
                                     rows={7}
                                     className="mt-2 w-full rounded-xl border border-gray-200 px-3 py-3 font-normal text-gray-800 focus:border-[#0F4C81] focus:outline-none"
-                                    placeholder="Write the note students will read..."
+                                    placeholder="Write the note students will read. Insert images at the cursor position."
                                 />
+                                <span className="mt-1 block font-normal text-gray-400">
+                                    Images are inserted at the cursor and displayed inline to students. Maximum image size: {UPLOAD_LIMITS_MB.image} MB.
+                                </span>
+                                <input
+                                    ref={imageInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    onChange={uploadNoteImage}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={selectImageInsertionPoint}
+                                    disabled={uploadingImage}
+                                    className="mt-2 inline-flex items-center gap-2 rounded-lg border border-[#0F4C81] px-3 py-2 text-sm font-bold text-[#0F4C81] hover:bg-blue-50 disabled:opacity-50"
+                                >
+                                    {uploadingImage
+                                        ? <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                                        : <PhotoIcon className="h-4 w-4" />}
+                                    {uploadingImage ? 'Uploading image...' : 'Insert image'}
+                                </button>
                             </label>
                             <label className="block text-sm font-bold text-gray-600">
                                 Attach PDF <span className="font-normal text-gray-400">(optional, max {UPLOAD_LIMITS_MB.document} MB)</span>
@@ -665,11 +760,11 @@ export default function AdminShortNotes() {
                             </label>
                             <button
                                 type="submit"
-                                disabled={savingNote}
+                                disabled={savingNote || uploadingImage}
                                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0F4C81] px-4 py-3 font-extrabold text-white transition hover:bg-[#0B3A63] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {savingNote ? <ArrowPathIcon className="h-5 w-5 animate-spin" /> : <PlusIcon className="h-5 w-5" />}
-                                {savingNote ? 'Saving note...' : 'Add note to chapter'}
+                                {uploadingImage ? 'Wait for image upload...' : savingNote ? 'Saving note...' : 'Add note to chapter'}
                             </button>
                         </form>
                 </section>
@@ -742,7 +837,7 @@ export default function AdminShortNotes() {
                                                     )}
                                                 </div>
                                                 {note.content && (
-                                                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">{note.content}</p>
+                                                    <RichNoteContent content={note.content} />
                                                 )}
                                                 {!note.content && !note.pdfUrl && (
                                                     <p className="mt-3 text-sm italic text-gray-500">This note has no text or PDF.</p>

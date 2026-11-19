@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { FaHouse, FaBookOpen, FaPenToSquare, FaUser } from 'react-icons/fa6';
+import { FaHouse, FaBookOpen, FaFileLines, FaPenToSquare, FaUser } from 'react-icons/fa6';
 
 export default function BottomNav() {
     const navItems = [
         { name: 'Home', path: '/student/home', Icon: FaHouse },
         { name: 'Learn', path: '/student/courses', Icon: FaBookOpen },
+        { name: 'Notes', path: '/student/short-notes', Icon: FaFileLines },
         { name: 'Practice', path: '/student/practice', Icon: FaPenToSquare },
         { name: 'Profile', path: '/student/profile', Icon: FaUser },
     ];
