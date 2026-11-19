@@ -1,4 +1,4 @@
-const IMAGE_MARKDOWN = /!\[[^\]]*\]\(https:\/\/[^)\s]+\)/g;
+const IMAGE_MARKDOWN = /(!\[[^\]]*\]\(https:\/\/[^)\s]+\))/g;
 
 const getImageUrl = (markdown) => {
     const match = markdown.match(/^!\[([^\]]*)\]\((https:\/\/[^)\s]+)\)$/);
