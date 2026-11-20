@@ -1,13 +1,14 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-    ClipboardDocumentCheckIcon, DocumentTextIcon, ArrowRightOnRectangleIcon
+    ClipboardDocumentCheckIcon, DocumentTextIcon, ArrowRightOnRectangleIcon, BookOpenIcon
 } from '@heroicons/react/24/outline';
 import { FaGraduationCap } from 'react-icons/fa';
 
 const NAV_ITEMS = [
     { name: 'National Exams', path: 'national-exams', icon: ClipboardDocumentCheckIcon },
     { name: 'Short Notes', path: 'short-notes', icon: DocumentTextIcon },
+    { name: 'Notes', path: 'notes', icon: BookOpenIcon },
 ];
 
 const BOTTOM_NAV_ITEMS = [

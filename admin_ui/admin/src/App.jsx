@@ -5,6 +5,7 @@ import AdminLayout from './components/layout/AdminLayout';
 import Login from './pages/Login';
 import AdminNationalExams from './pages/admin/NationalExams';
 import AdminShortNotes from './pages/admin/ShortNotes';
+import AdminNotes from './pages/admin/Notes';
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
               <Route index element={<Navigate to="national-exams" replace />} />
               <Route path="national-exams" element={<AdminNationalExams />} />
               <Route path="short-notes" element={<AdminShortNotes />} />
+              <Route path="notes" element={<AdminNotes />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/admin/national-exams" replace />} />

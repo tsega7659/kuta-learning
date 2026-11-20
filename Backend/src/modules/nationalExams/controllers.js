@@ -213,8 +213,10 @@ export const getDashboardExamSimulator = async (req, res) => {
                     include: {
                         questions: { select: { id: true } },
                         attempts: studentId ? {
-                            where: { studentId, status: "SUBMITTED" },
-                            select: { id: true }
+                            where: { studentId },
+                            orderBy: { createdAt: "desc" },
+                            take: 1,
+                            select: { status: true }
                         } : false
                     }
                 }
@@ -224,7 +226,7 @@ export const getDashboardExamSimulator = async (req, res) => {
         const formattedSubjects = subjects.map(sub => {
             const totalExams = sub.exams.length;
             const totalQuestions = sub.exams.reduce((sum, e) => sum + e.questions.length, 0);
-            const completedCount = sub.exams.filter(e => (e.attempts || []).length > 0).length;
+            const completedCount = sub.exams.filter(e => e.attempts?.[0]?.status === "SUBMITTED").length;
             const progressPercentage = totalExams > 0 ? Math.round((completedCount / totalExams) * 100) : 0;
 
             return {

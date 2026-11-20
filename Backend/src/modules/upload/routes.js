@@ -46,9 +46,13 @@ const parseCloudinaryUrl = (url) => {
     const uploadIdx = pathParts.indexOf("upload");
     if (uploadIdx === -1) return null;
 
-    const resourceType = pathParts[uploadIdx - 1] || "image";
+    const deliveryType = pathParts[uploadIdx - 1] || "upload";
+    const resourceType = ["upload", "private", "authenticated"].includes(deliveryType)
+        ? pathParts[uploadIdx - 2] || "image"
+        : deliveryType;
     const afterUpload = pathParts.slice(uploadIdx + 1);
-    const startIdx = /^v\d+$/.test(afterUpload[0]) ? 1 : 0;
+    const version = /^v\d+$/.test(afterUpload[0]) ? afterUpload[0] : undefined;
+    const startIdx = version ? 1 : 0;
     const publicIdParts = [...afterUpload.slice(startIdx)];
     if (publicIdParts.length === 0) return null;
 
@@ -63,7 +67,13 @@ const parseCloudinaryUrl = (url) => {
     const publicId = publicIdParts.join("/");
     if (!publicId) return null;
 
-    return { resourceType, publicId, format };
+    return {
+        resourceType,
+        deliveryType: ["upload", "private", "authenticated"].includes(deliveryType) ? deliveryType : "upload",
+        publicId,
+        format,
+        version: version ? Number(version.slice(1)) : undefined,
+    };
 };
 
 const pipeRemoteFile = (targetUrl, res, safeFilename, disposition = "attachment") =>
@@ -104,9 +114,10 @@ const buildSignedCloudinaryUrl = (parsed) => {
     configureCloudinary();
     const options = {
         resource_type: parsed.resourceType,
+        type: parsed.deliveryType,
+        version: parsed.version,
         sign_url: true,
         secure: true,
-        type: "upload",
         expires_at: Math.floor(Date.now() / 1000) + 300,
     };
     // Image-type PDFs need explicit format; raw assets should use public_id as stored.
@@ -116,6 +127,16 @@ const buildSignedCloudinaryUrl = (parsed) => {
         options.format = "pdf";
     }
     return cloudinary.url(parsed.publicId, options);
+};
+
+const buildPrivateDownloadUrl = (parsed) => {
+    configureCloudinary();
+    return cloudinary.utils.private_download_url(parsed.publicId, parsed.format || "", {
+        resource_type: parsed.resourceType,
+        type: parsed.deliveryType,
+        expires_at: Math.floor(Date.now() / 1000) + 300,
+        attachment: true,
+    });
 };
 
 /**
@@ -192,6 +213,9 @@ router.get("/download", authenticateToken, async (req, res) => {
 
         if (hasCloudinaryCredentials()) {
             try {
+                if (parsed.resourceType === "raw") {
+                    attempts.push(buildPrivateDownloadUrl(parsed));
+                }
                 attempts.push(buildSignedCloudinaryUrl(parsed));
             } catch (signErr) {
                 console.error("[download] Signed URL build failed:", signErr);
@@ -205,7 +229,10 @@ router.get("/download", authenticateToken, async (req, res) => {
         let lastError = null;
         for (const attemptUrl of attempts) {
             try {
-                console.log(`[download] Trying: ${attemptUrl}`);
+                console.info("[download] Trying Cloudinary delivery", {
+                    resourceType: parsed.resourceType,
+                    deliveryType: parsed.deliveryType,
+                });
                 await pipeRemoteFile(attemptUrl, res, safeFilename, disposition);
                 return;
             } catch (err) {
